@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="recording_side_entries">
+        <item>Ambas as vozes (padrão)</item>
+        <item>Apenas a voz recebida</item>
+        <item>Apenas a minha voz</item>
+    </string-array>
+    <string-array name="recording_side_values">
+        <item>both</item>
+        <item>received</item>
+        <item>sent</item>
+    </string-array>
+
+    <string-array name="transcription_side_entries">
+        <item>Apenas o áudio recebido (padrão)</item>
+        <item>Ambas as vozes</item>
+    </string-array>
+    <string-array name="transcription_side_values">
+        <item>received</item>
+        <item>both</item>
+    </string-array>
+
+    <string-array name="engine_entries">
+        <item>Vosk pt-BR — instantâneo (padrão)</item>
+        <item>Parakeet TDT (sherpa-onnx) — em blocos</item>
+    </string-array>
+    <string-array name="engine_values">
+        <item>vosk</item>
+        <item>sherpa</item>
+    </string-array>
+
+    <string-array name="capture_mode_entries">
+        <item>Automático — testa e usa a melhor</item>
+        <item>Nativa — VOICE_CALL (quando o aparelho permite)</item>
+        <item>Microfone — funciona em qualquer aparelho</item>
+    </string-array>
+    <string-array name="capture_mode_values">
+        <item>auto</item>
+        <item>native</item>
+        <item>mic</item>
+    </string-array>
+    <string-array name="voice_fx_entries">
+        <item>Sem efeito (padrão)</item>
+        <item>Voz grave</item>
+        <item>Voz aguda</item>
+        <item>Robô</item>
+        <item>Rádio antigo</item>
+        <item>Eco / caverna</item>
+    </string-array>
+    <string-array name="voice_fx_values">
+        <item>none</item>
+        <item>deep</item>
+        <item>chipmunk</item>
+        <item>robot</item>
+        <item>radio</item>
+        <item>echo</item>
+    </string-array>
+</resources>

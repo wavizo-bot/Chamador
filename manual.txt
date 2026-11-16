@@ -1,0 +1,134 @@
+================================================================================
+TELEFONE CHAMADOR — MANUAL DE RETOMADA
+Atualizado em 16/11/2026. Regra 1.1 do C:\APPS\Regras.txt: manter a cada entrega.
+================================================================================
+
+O QUE E
+--------
+Discador Android completo (ROLE_DIALER + InCallService) com transcrição em tempo
+real (Vosk pt-BR offline; opcional Parakeet TDT via sherpa-onnx), gravação de
+ligações com cadeia de fallback, VAD próprio, retenção configurável, busca FTS4,
+bloqueio de números, efeitos de voz e integração opcional com Shizuku (gravação
+via serviço shell uid 2000 — a rota que funciona no aparelho Xiaomi/HyperOS do
+dono). Dados 100% locais (Room/SQLite + WAV), sem servidores, sem login, sem
+nuvem. Estética "Caderno de Cuidado" (verde #174A3A, papel creme, serifados).
+
+Idioma: PT-BR. Pacote: com.telefonechamador.app.
+
+ESTRUTURA DE PASTAS/ARQUIVOS
+----------------------------
+app/src/main/java/com/telefonechamador/app/
+  App.kt                     Application (canais de notificação, wake retention)
+  call/                      CallEngine (motor da sessão), CallSession, CallMonitor
+                             (TelephonyCallback), CallController (roteio/discagem),
+                             CallScreeningImpl (triagem/bloqueio)
+  incall/InCallServiceImpl   tela de ligação integrada (IN_CALL_SERVICE_UI=true)
+  audio/                     CallRecorder (troca adaptativa de fonte), ShellRecorder
+                             (coordenador da gravação via Shizuku), WavWriter,
+                             VadGate (piso adaptativo + hangover + pré-roll 400ms),
+                             VoiceFx/VoiceFxLoop (DSP de efeitos), MediaDecode,
+                             AudioSourceProbe
+  shizuku/                   ShellCapture (usa HiddenApiBypass), UserServiceImpl
+                             (instanciado PELO NOME no processo do servidor — R8
+                             precisa do keep em proguard-rules.pro), IUserService.aidl
+  stt/                       VoskEngine, SttEngine (contrato), ModelManager (baixa
+                             tar.bz2 via commons-compress); opcional src/sherpa/java
+                             (SherpaEngine) compilado só se houver AAR em app/libs/
+  data/                      Entities, Daos, CallRepository, AppDatabase (Room)
+  retention/RetentionWorker  limpeza diária (WorkManager), 1–99 dias, ★ nunca apaga
+  service/                   CallSessionService (FGS phoneCall|microphone),
+                             OverlayService (janela flutuante), BootReceiver
+  ui/                        MainActivity (discador/histórico/contatos via bottom_nav),
+                             OngoingCallActivity, CallDetailActivity, SettingsFragment,
+                             SearchFragment, DialpadDialogFragment, ModelActivity,
+                             BlockedNumbersActivity, Adapters
+  util/                      Fmt (TEMPO SEM ":" — regra 4.3), Prefs, PrefsDataStore
+                             (Ajustes gravam no MESMO arquivo que o motor lê),
+                             Permissions, Notifications, CallUtils, ShizukuSupport
+docs pendentes: politica-de-privacidade.html, termos-de-servico.html,
+aviso-legal.html (obrigatórios quando houver loja ou repositório/Pages público).
+Arquivos de conformidade: manual.txt (este), log.txt (FORA do git — regra 3.1),
+entregas/ (padrão da regra 2.4), .gitignore (GH2).
+
+IDENTIDADE DAS LOJAS
+--------------------
+NENHUMA publicada. Google Play: pendente de decisão (o app usa READ_CALL_LOG/
+CALL_PHONE/CALL_SCREENING/SYSTEM_ALERT_WINDOW — categorias restritas que exigem
+declaração e justificativa; e o targetSdk está em 34 de propósito, ver abaixo).
+Sideload via adb é o modo de uso atual. Microsoft Store: N/A (Android).
+
+CREDENCIAIS (ONDE ESTÃO, NUNCA O CONTEÚDO)
+------------------------------------------
+- Nenhuma credencial de OAuth/Drive (o app não usa login Google — seções 5.x/6.x
+  do Regras.txt inaplicáveis).
+- JDK 21 embutido em .build/jdk-21.0.13+9 (apontado por org.gradle.java.home em
+  gradle.properties; .build/ fora do git).
+- Keystore: nenhuma própria; release assinado com a chave debug para teste local
+  (sideload). Ao publicar: criar upload key + App Signing (regra A12).
+- Git: identity local do repositório usa a global do PC (wavizo-bot /
+  coelhuturbo@gmail.com). Repositório público no GitHub: PENDENTE de decisão.
+
+VERSÕES PUBLICADAS E PENDENTES
+------------------------------
+- versionCode 1 / versionName 1.0.0 — NUNCA enviada a nenhuma loja (nada queimado).
+- Builds internas de desenvolvimento: ~30 (contagem informal da sessão; a
+  instalada no aparelho principal é a build com a correção do formato de tempo).
+- Pendências para publicar: R8 já ativado no release (A1) mas FALTA testar o
+  artefato release em aparelho (A4) com fluxos reais; assets de loja (L1–L4);
+  documentos legais públicos; repositório público + Pages (GH1–GH12).
+- Exceção consciente documentada: targetSdk 34 (A7 pede 35+ para Play). Motivo:
+  Android 35 restringe ainda mais a captura VOICE_CALL; sideload não exige 35.
+  Se for publicar, avaliar perda da sonda de captação vs. exigência da Play.
+
+TIMELINE E ARMADILHAS
+---------------------
+15/11/2026: discador + transcrição ao vivo funcionando; Vosk small-pt.
+16/11/2026 (manhã/tarde): gravação via shell Shizuku provada de ponta a ponta
+  (IUserService v7 pré-aquecido no launch; WAV com cabeçalho corrigido no stop
+  em offsets 4/40); DOWNLINK "só recebida" PROVADO em chamada real (call 37);
+  modo "duas vozes" com podcast como fonte; build 29 instala o fix do número
+  tardio (Telecom propaga o número para a linha já criada — CallEngine
+  lateNumber + repo.updateNumber).
+16/11/2026 (~15:59): REDE CLARO DA ÁREA DEGRADADA — ligações novas não completam
+  (causa 36 / MIPC 2162; depois 129→2172 com paging não entregue; reverso com
+  fail cause 250). SIM2 do 2º aparelho não se registra (3G sem aceitar).
+  Ambos caem para 2G (GPRS, canal 249). NÃO é o app: DIAL_REQ byte-idêntico
+  entre chamada que funcionou e as que falharam; pipeline inteiro rodou AO VIVO
+  mesmo na tentativa falha (VAD + Vosk "as metas fiscais desenhados pela lei" +
+  stopRecord limpo, sem órfãos). Contexto 2026: redução de 3G nas capitais é
+  tendência documentada (3G morre primeiro; 2G fica até ~2028).
+Armadilhas já mordidas:
+- MIUI/HyperOS: popup de instalação a CADA adb install (avisar o usuário antes).
+- Depuração Wi-Fi não re-anuncia após reboot: religar na mão (off/on) e conectar
+  no IP:porta nova (ler em "Endereço IP e porta" da tela de Depuração Wi-Fi).
+- Shizuku server morre com reboot/toggle: sh /sdcard/Android/data/
+  moe.shizuku.privileged.api/start.sh + relançar o app; conferir
+  `ps -A | grep telefonechamador` (processo :shizuku).
+- TelephonyCallback não entrega número (31+): número vem do handle do Telecom
+  via bind assíncrono — fix da build 29.
+- Gravação por run-as não alcança /sdcard; binários puxar com
+  `adb exec-out run-as cat ... > arquivo` (cmd /c) e empurrar via /data/local/tmp.
+- Select-String com padrão acentuado falha; usar fragmentos ASCII.
+- Ícones vetoriais brancos: pathData sem namespace android: (já corrigido).
+- Ajustes desconectados do motor: resolvido com PrefsDataStore.
+- R8 + UserServiceImpl por reflexão: keep obrigatório (já em proguard-rules.pro).
+
+COMO RETOMAR COM MÍNIMO ESFORÇO
+-------------------------------
+Build: $env:JAVA_HOME não é preciso (org.gradle.java.home aponta o JDK);
+  cmd /c "gradlew.bat assembleDebug --console=plain".
+Instalar: %LOCALAPPDATA%\Android\Sdk\platform-tools\adb.exe install -r
+  app\build\outputs\apk\debug\app-debug.apk (HEADS-UP MIUI: popup a cada install).
+Aparelhos de teste: principal NZONJBMB4DK7QKWC (goya, HyperOS/Android 16,
+  192.168.31.186 porta muda a cada toggle) e secundário b2c132d1 (SIM2 =
+  551194757128). Conexão: adb mdns services → adb connect ip:porta.
+Teste de chamada real: discar do principal, atender no secundário
+  (keyevent 5), ~80s de fala, encerrar (keyevent 6), conferir linha nova no
+  banco (número preenchido + segmentos > 0). Em 16/11/2026 isso estava BLOQUEADO
+  pela rede (ver Timeline) — retestar quando a operadora normalizar.
+Referências de padrão: C:\APPS\Regras.txt (obrigatório); exemplos de OAuth/Drive
+em Caderno de Cuidado etc. (inaplicáveis enquanto não houver login Google).
+
+CONTATO
+-------
+mmr05@hotmail.com / 11978831938

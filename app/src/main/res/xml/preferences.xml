@@ -1,0 +1,150 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <PreferenceCategory android:title="Gravação e transcrição">
+        <SwitchPreferenceCompat
+            android:defaultValue="true"
+            android:key="recording_enabled"
+            android:title="Gravar ligações"
+            app:useSimpleSummaryProvider="false"
+            android:summary="Grava o áudio das ligações automaticamente" />
+        <ListPreference
+            android:defaultValue="both"
+            android:entries="@array/recording_side_entries"
+            android:entryValues="@array/recording_side_values"
+            android:key="recording_side"
+            android:title="Lado da gravação"
+            app:useSimpleSummaryProvider="true" />
+        <SwitchPreferenceCompat
+            android:defaultValue="true"
+            android:key="auto_transcribe"
+            android:summary="Transcreve automaticamente durante a ligação"
+            android:title="Transcrever ligações" />
+        <ListPreference
+            android:defaultValue="received"
+            android:entries="@array/transcription_side_entries"
+            android:entryValues="@array/transcription_side_values"
+            android:key="transcription_side"
+            android:title="Transcrição padrão"
+            app:useSimpleSummaryProvider="true" />
+        <ListPreference
+            android:defaultValue="vosk"
+            android:entries="@array/engine_entries"
+            android:entryValues="@array/engine_values"
+            android:key="stt_engine"
+            android:title="Motor de transcrição"
+            app:useSimpleSummaryProvider="true" />
+        <ListPreference
+            android:defaultValue="none"
+            android:entries="@array/voice_fx_entries"
+            android:entryValues="@array/voice_fx_values"
+            android:key="voice_fx"
+            android:title="Efeito na sua voz"
+            app:useSimpleSummaryProvider="true" />
+        <SwitchPreferenceCompat
+            android:defaultValue="false"
+            android:key="voice_fx_live"
+            android:summary="Experimental: aplica o efeito ao vivo pelo alto-falante durante a ligação — nesse modo a voz do interlocutor deixa de ser captada"
+            android:title="Aplicar efeito ao vivo" />
+        <Preference
+            android:key="models"
+            android:summary="Baixar e escolher modelos offline (Vosk / Parakeet)"
+            android:title="Modelos de transcrição" />
+        <SwitchPreferenceCompat
+            android:defaultValue="true"
+            android:key="mic_speaker_auto"
+            android:summary="No modo microfone, liga o alto-falante para captar a outra voz"
+            android:title="Alto-falante automático" />
+        <ListPreference
+            android:defaultValue="auto"
+            android:entries="@array/capture_mode_entries"
+            android:entryValues="@array/capture_mode_values"
+            android:key="capture_mode"
+            android:title="Fonte de captura"
+            app:useSimpleSummaryProvider="true" />
+        <Preference
+            android:key="test_capture"
+            android:summary="Diagnóstico das fontes de áudio (ideal durante uma ligação)"
+            android:title="Testar captação agora" />
+    </PreferenceCategory>
+
+    <PreferenceCategory android:title="Retenção">
+        <Preference
+            android:key="retention_days"
+            android:summary="10 dias"
+            android:title="Manter conversas por" />
+        <Preference
+            android:enabled="false"
+            android:summary="Conversas marcadas com ★ nunca são apagadas pela limpeza automática (1 a 99 dias)." />
+    </PreferenceCategory>
+
+    <PreferenceCategory android:title="Notificações">
+        <SwitchPreferenceCompat
+            android:defaultValue="true"
+            android:key="notify_call_end"
+            android:summary="Resumo com transcrição e gravação ao encerrar"
+            android:title="Avisar ao terminar ligação" />
+        <Preference
+            android:key="notif_ringtone"
+            android:summary="Toque padrão do aparelho"
+            android:title="Som das notificações" />
+        <SwitchPreferenceCompat
+            android:defaultValue="true"
+            android:key="notif_vibrate"
+            android:title="Vibrar" />
+        <SwitchPreferenceCompat
+            android:defaultValue="false"
+            android:key="notify_cleanup"
+            android:summary="Quando a limpeza automática remover conversas"
+            android:title="Avisar limpeza automática" />
+    </PreferenceCategory>
+
+    <PreferenceCategory android:title="Ligações e contatos">
+        <SwitchPreferenceCompat
+            android:defaultValue="true"
+            android:key="silence_blocked"
+            android:summary="Sem toque e sem vibração para números bloqueados"
+            android:title="Silenciar números bloqueados" />
+        <Preference
+            android:key="blocked"
+            android:summary="Lista de números rejeitados automaticamente"
+            android:title="Números bloqueados" />
+        <Preference
+            android:key="dialer_role"
+            android:summary="Tela de chamada integrada, teclado e histórico"
+            android:title="Definir como app de telefone padrão" />
+        <SwitchPreferenceCompat
+            android:defaultValue="false"
+            android:key="overlay_enabled"
+            android:summary="Janela flutuante com a transcrição durante a ligação"
+            android:title="Transcrição flutuante" />
+        <Preference
+            android:key="battery"
+            android:summary="Recomendado em Xiaomi/MIUI/HyperOS para não perder ligações em segundo plano"
+            android:title="Ignorar otimização de bateria" />
+        <SwitchPreferenceCompat
+            android:defaultValue="true"
+            android:key="shizuku_record"
+            android:summary="Com o Shizuku em execução, grava e transcreve a ligação pelo serviço shell (uid 2000) — a rota que funciona neste aparelho"
+            android:title="Capturar ligação via Shizuku" />
+        <Preference
+            android:key="shizuku"
+            android:summary="Conceder permissões, liberar janela flutuante e bateria via Shizuku (opcional, sem root)"
+            android:title="Permissões avançadas (Shizuku)" />
+        <Preference
+            android:key="shizuku_capture"
+            android:summary="Mede o áudio capturado dentro do processo do Shizuku (uid shell). Teste fora e DURANTE uma ligação — se o valor subir na ligação, a transcrição real funciona."
+            android:title="Teste de captura pelo Shizuku" />
+    </PreferenceCategory>
+
+    <PreferenceCategory android:title="Sobre">
+        <Preference
+            android:key="legal"
+            android:title="Aviso legal" />
+        <Preference
+            android:key="about"
+            android:summary="Uso pessoal, dados 100% locais"
+            android:title="Versão" />
+    </PreferenceCategory>
+</PreferenceScreen>

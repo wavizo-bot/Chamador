@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical">
+
+    <com.google.android.material.appbar.MaterialToolbar
+        android:id="@+id/toolbar_detail"
+        android:layout_width="match_parent"
+        android:layout_height="?attr/actionBarSize"
+        android:background="@color/cc_paper"
+        android:navigationIcon="@drawable/ic_back"
+        app:navigationIcon="@drawable/ic_back"
+        app:navigationIconTint="@color/cc_green_deep"
+        app:title="Modelos de transcrição"
+        app:titleTextColor="@color/cc_green_deep"
+        app:titleTextAppearance="@style/AppTheme.Title" />
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/recycler"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:clipToPadding="false" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_margin="10dp"
+        android:background="@drawable/card_bg"
+        android:orientation="vertical"
+        android:padding="14dp">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:fontFamily="serif"
+            android:text="Motor padrão"
+            android:textColor="@color/cc_green_deep"
+            android:textSize="16sp"
+            android:textStyle="bold" />
+
+        <RadioGroup
+            android:id="@+id/rg_engine"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <RadioButton
+                android:id="@+id/rb_vosk"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:checked="true"
+                android:text="Vosk pt-BR — instantâneo, em streaming"
+                android:textColor="@color/cc_ink" />
+
+            <RadioButton
+                android:id="@+id/rb_sherpa"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Parakeet TDT (sherpa-onnx) — em blocos de ~2 s"
+                android:textColor="@color/cc_ink" />
+        </RadioGroup>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:fontFamily="serif"
+            android:text="Modelo do Vosk"
+            android:textColor="@color/cc_green_deep"
+            android:textSize="16sp"
+            android:textStyle="bold" />
+
+        <RadioGroup
+            android:id="@+id/rg_vosk"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <RadioButton
+                android:id="@+id/rb_small"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:checked="true"
+                android:text="Pequeno — 31 MB, rápido (recomendado)"
+                android:textColor="@color/cc_ink" />
+
+            <RadioButton
+                android:id="@+id/rb_big"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="FalaBrazil — 1,6 GB, maior precisão"
+                android:textColor="@color/cc_ink" />
+        </RadioGroup>
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/tv_status"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingStart="14dp"
+        android:paddingEnd="14dp"
+        android:paddingBottom="12dp"
+        android:textColor="@color/cc_ink_faint"
+        android:textSize="12sp" />
+</LinearLayout>

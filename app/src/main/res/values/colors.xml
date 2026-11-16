@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Paleta inspirada no Caderno de Cuidado -->
+    <color name="cc_green_deep">#174A3A</color>
+    <color name="cc_green">#1B7A43</color>
+    <color name="cc_green_soft">#E3EFE9</color>
+    <color name="cc_red">#DC2626</color>
+    <color name="cc_red_dark">#B91C1C</color>
+    <color name="cc_amber">#CA8A04</color>
+    <color name="cc_blue">#2563EB</color>
+
+    <color name="cc_paper">#F6F3EA</color>
+    <color name="cc_paper_card">#FFFDF7</color>
+    <color name="cc_ink">#222222</color>
+    <color name="cc_ink_soft">#666666</color>
+    <color name="cc_ink_faint">#7C8A82</color>
+    <color name="cc_line">#E5E7EB</color>
+
+    <color name="cc_night_bg">#0E1F19</color>
+    <color name="cc_night_card">#16291F</color>
+    <color name="cc_cream_on_dark">#F2EFE6</color>
+    <color name="cc_cream_faint">#B9C4BC</color>
+
+    <color name="ic_launcher_background">#174A3A</color>
+</resources>

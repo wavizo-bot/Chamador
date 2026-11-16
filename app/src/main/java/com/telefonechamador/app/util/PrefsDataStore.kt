@@ -41,7 +41,6 @@ class PrefsDataStore : PreferenceDataStore() {
         "recording_side" -> Prefs.recordingSide
         "transcription_side" -> Prefs.transcriptionSide
         "stt_engine" -> Prefs.sttEngine
-        "voice_fx" -> Prefs.voiceFx
         "capture_mode" -> Prefs.captureMode
         else -> defValue ?: ""
     }
@@ -51,7 +50,6 @@ class PrefsDataStore : PreferenceDataStore() {
             "recording_side" -> Prefs.recordingSide = value ?: Prefs.RECORD_SIDE_BOTH
             "transcription_side" -> Prefs.transcriptionSide = value ?: Prefs.TRANSCRIPTION_SIDE_RECEIVED
             "stt_engine" -> Prefs.sttEngine = value ?: Prefs.ENGINE_VOSK
-            "voice_fx" -> Prefs.voiceFx = value ?: "none"
             "capture_mode" -> Prefs.captureMode = value ?: Prefs.CAPTURE_AUTO
         }
     }

@@ -53,6 +53,14 @@ class CallEngine(private val context: Context) {
     @Volatile private var lateNumber: String? = null
     private var startedAt = 0L
     private var recorder: CallRecorder? = null
+
+    /** Troca o efeito de voz ao vivo durante a ligação corrente. */
+    fun setLiveEffect(id: String) {
+        recorder?.setLiveEffect(id)
+    }
+
+    /** true quando o loop de efeito ao vivo está no caminho do áudio agora. */
+    fun liveEffectActive(): Boolean = recorder?.fxActive == true
     private var stt: SttEngine? = null
     private val wavFiles = ConcurrentHashMap<String, File>()   // side -> arquivo
     private val streamSide = ConcurrentHashMap<Int, String>()  // streamId -> side

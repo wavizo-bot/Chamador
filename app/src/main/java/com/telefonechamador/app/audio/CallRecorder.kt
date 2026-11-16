@@ -55,6 +55,15 @@ class CallRecorder(private val context: Context, private val callDir: File) {
 
     private var fxLoop: VoiceFxLoop? = null
 
+    /**
+     * Troca o efeito de voz DURANTE a ligação (vale no próximo bloco de ~100 ms).
+     * "none" desliga a reprodução (bypass sem realimentação) — a captura segue
+     * como está até o fim da ligação (replanejar fontes em chamada não é seguro).
+     */
+    fun setLiveEffect(id: String) {
+        fxLoop?.params = VoiceLibrary.paramsOf(context, id)
+    }
+
     /** Fontes candidatas por stream para a troca adaptativa durante a ligação. */
     private val candidatesByStream = HashMap<Int, List<Int>>()
 
@@ -70,7 +79,7 @@ class CallRecorder(private val context: Context, private val callDir: File) {
 
         // Efeito ao vivo (experimental): captura a sua voz, aplica o efeito e
         // reproduz no alto-falante. Somente a sua voz fica disponível.
-        if (Prefs.voiceFxLive && VoiceFx.Preset.byId(Prefs.voiceFx) != VoiceFx.Preset.NONE) {
+        if (Prefs.voiceFxLive && VoiceLibrary.byId(context, Prefs.voiceFx)?.id != VoiceLibrary.NONE_ID) {
             return StreamPlan(
                 listOf(StreamSpec(0, Side.SENT, MediaRecorder.AudioSource.VOICE_COMMUNICATION)),
                 false,
@@ -170,9 +179,9 @@ class CallRecorder(private val context: Context, private val callDir: File) {
         if (plan.streams.size == 1 &&
             specs.firstOrNull()?.source == MediaRecorder.AudioSource.VOICE_COMMUNICATION
         ) {
-            val preset = VoiceFx.Preset.byId(Prefs.voiceFx)
-            if (preset != VoiceFx.Preset.NONE) {
-                fxLoop = VoiceFxLoop(context, preset, AudioSourceProbe.SAMPLE_RATE)
+            val params = VoiceLibrary.paramsOf(context, Prefs.voiceFx)
+            if (params != null) {
+                fxLoop = VoiceFxLoop(context, AudioSourceProbe.SAMPLE_RATE).also { it.params = params }
                 fxActive = true
             }
         }

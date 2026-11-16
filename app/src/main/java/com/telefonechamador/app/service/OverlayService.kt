@@ -44,13 +44,13 @@ class OverlayService : Service() {
 
         val title = TextView(this).apply {
             setTextColor(ContextCompat.getColor(context, R.color.cc_cream_on_dark))
-            textSize = 15f
+            textSize = 14f
             typeface = Typeface.create(Typeface.SERIF, Typeface.BOLD)
         }
         val bodyTv = TextView(this).apply {
             setTextColor(ContextCompat.getColor(context, R.color.cc_cream_faint))
-            textSize = 13f
-            maxLines = 6
+            textSize = 14f
+            maxLines = 8
         }
         val l = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -65,7 +65,7 @@ class OverlayService : Service() {
         body = bodyTv
 
         val params = WindowManager.LayoutParams(
-            WindowManager.LayoutParams.WRAP_CONTENT,
+            (resources.displayMetrics.widthPixels * 0.86).toInt(),
             WindowManager.LayoutParams.WRAP_CONTENT,
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
@@ -90,7 +90,7 @@ class OverlayService : Service() {
                 }
                 title.text = s.contactName ?: s.number.ifBlank { "Ligação" }
                 val sb = StringBuilder()
-                val last = s.segments.takeLast(3)
+                val last = s.segments.takeLast(4)
                 for (seg in last) {
                     sb.append("[").append(Fmt.mmss(seg.offsetMs)).append("] ")
                     if (seg.side == "sent") sb.append("Você: ")

@@ -51,6 +51,9 @@ class SettingsFragment : PreferenceFragmentCompat() {
         find("models")?.setOnPreferenceClickListener {
             startActivity(Intent(requireContext(), ModelActivity::class.java)); true
         }
+        find("voices")?.setOnPreferenceClickListener {
+            startActivity(Intent(requireContext(), VozesActivity::class.java)); true
+        }
         find("test_capture")?.setOnPreferenceClickListener { testCapture(); true }
         find("retention_days")?.setOnPreferenceClickListener { askRetention(); true }
         find("notif_ringtone")?.setOnPreferenceClickListener { pickRingtone(); true }
@@ -76,6 +79,8 @@ class SettingsFragment : PreferenceFragmentCompat() {
     private fun updateSummaries() {
         find("retention_days")?.summary =
             "${Prefs.retentionDays} dias (1 a 99 — favoritos com ★ não são apagados)"
+        find("voices")?.summary =
+            "Ativa: ${com.telefonechamador.app.audio.VoiceLibrary.labelOf(requireContext(), Prefs.voiceFx)}"
         find("about")?.summary = "${versaoInstalada()} — uso pessoal, dados 100% locais"
     }
 

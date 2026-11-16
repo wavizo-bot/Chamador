@@ -13,7 +13,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.button.MaterialButton
 import com.telefonechamador.app.R
-import com.telefonechamador.app.audio.VoiceFx
+import com.telefonechamador.app.audio.VoiceLibrary
 import com.telefonechamador.app.call.UiSegment
 import com.telefonechamador.app.data.CallEntity
 import com.telefonechamador.app.data.CallRepository
@@ -133,14 +133,14 @@ class CallDetailActivity : AppCompatActivity() {
             Toast.makeText(this, "Sem gravação para aplicar efeito.", Toast.LENGTH_SHORT).show()
             return
         }
-        val presets = VoiceFx.Preset.entries.filter { it != VoiceFx.Preset.NONE }
-        val labels = presets.map { it.label }.toTypedArray()
+        val defs = VoiceLibrary.all(this).filter { it.id != VoiceLibrary.NONE_ID }
+        val labels = defs.map { it.label }.toTypedArray()
         AlertDialog.Builder(this)
             .setTitle("Exportar com efeito")
             .setItems(labels) { _, which ->
-                val preset = presets[which]
+                val def = defs[which]
                 lifecycleScope.launch(kotlinx.coroutines.Dispatchers.Default) {
-                    val out = ShareUtils.exportWithEffect(this@CallDetailActivity, f, preset)
+                    val out = ShareUtils.exportWithEffect(this@CallDetailActivity, f, def)
                     kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                         if (out != null) ShareUtils.shareAudio(this@CallDetailActivity, out)
                         else Toast.makeText(this@CallDetailActivity, "Falha ao aplicar o efeito.", Toast.LENGTH_SHORT).show()

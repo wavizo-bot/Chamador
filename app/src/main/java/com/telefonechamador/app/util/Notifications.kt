@@ -64,7 +64,7 @@ object Notifications {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
         return NotificationCompat.Builder(context, CH_ACTIVE)
-            .setSmallIcon(R.drawable.ic_graphic_eq)
+            .setSmallIcon(R.drawable.ic_notif)
             .setContentTitle("Telefone Chamador")
             .setContentText(text)
             .setOngoing(true)
@@ -82,7 +82,7 @@ object Notifications {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
         val n = NotificationCompat.Builder(context, CH_CALLS)
-            .setSmallIcon(R.drawable.ic_record)
+            .setSmallIcon(R.drawable.ic_notif)
             .setContentTitle(title)
             .setContentText(text)
             .setAutoCancel(true)
@@ -95,7 +95,7 @@ object Notifications {
         if (!Prefs.notifyCleanup || deleted <= 0) return
         val nm = context.getSystemService(NotificationManager::class.java) ?: return
         val n = NotificationCompat.Builder(context, CH_ALERTS)
-            .setSmallIcon(R.drawable.ic_history)
+            .setSmallIcon(R.drawable.ic_notif)
             .setContentTitle("Limpeza automática")
             .setContentText("$deleted conversa(s) antiga(s) removida(s) — favoritos preservados.")
             .setAutoCancel(true)
@@ -112,7 +112,7 @@ object Notifications {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
         val n = NotificationCompat.Builder(context, CH_CALLS)
-            .setSmallIcon(R.drawable.ic_graphic_eq)
+            .setSmallIcon(R.drawable.ic_notif)
             .setContentTitle(title)
             .setContentText(text)
             .setAutoCancel(true)

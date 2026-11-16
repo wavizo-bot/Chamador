@@ -71,7 +71,7 @@ object Prefs {
         get() = bool("mic_speaker_auto", true)
         set(v) = put("mic_speaker_auto", v)
 
-    /** Preset de efeito de voz (VoiceFx.Preset.id). "none" desligado. */
+    /** Id da voz ativa (VoiceLibrary). "none" = sem efeito. */
     var voiceFx: String
         get() = str("voice_fx", "none")
         set(v) = put("voice_fx", v)
@@ -122,6 +122,16 @@ object Prefs {
     var captureCapability: String
         get() = str("capture_capability", "")
         set(v) = put("capture_capability", v)
+
+    /** Biblioteca de vozes: clones criados pelo usuário (JSON array). */
+    var voiceClones: String
+        get() = str("voice_clones", "[]")
+        set(v) = put("voice_clones", v)
+
+    /** Calibração da voz do dono (JSON {"pitchHz":..,"zcr":..}). */
+    var voiceBaseline: String
+        get() = str("voice_baseline", "")
+        set(v) = put("voice_baseline", v)
 
     fun clearCapability() {
         captureCapability = ""

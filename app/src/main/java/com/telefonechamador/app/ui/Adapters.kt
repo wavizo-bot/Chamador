@@ -70,7 +70,7 @@ class CallsAdapter(
 
 // ---------- segmentos de transcrição ----------
 
-class SegmentsAdapter : ListAdapter<UiSegment, SegmentsAdapter.VH>(DIFF) {
+class SegmentsAdapter(private val dark: Boolean = false) : ListAdapter<UiSegment, SegmentsAdapter.VH>(DIFF) {
 
     companion object {
         val DIFF = object : DiffUtil.ItemCallback<UiSegment>() {
@@ -108,6 +108,18 @@ class SegmentsAdapter : ListAdapter<UiSegment, SegmentsAdapter.VH>(DIFF) {
         }
         h.time.text = Fmt.mmss(s.offsetMs)
         h.text.text = s.text
+        // A tela de ligação é noturna; o detalhe da conversa é claro.
+        // No dark, rótulos e horário usam as variantes de alto contraste (WCAG ≥7:1).
+        if (dark) {
+            h.text.setTextColor(ContextCompat.getColor(c, R.color.cc_cream_on_dark))
+            h.time.setTextColor(ContextCompat.getColor(c, R.color.cc_cream_faint))
+            val sideColor = when (s.side) {
+                "sent" -> R.color.cc_blue_on_dark
+                "mixed" -> R.color.cc_cream_faint
+                else -> R.color.cc_green_on_dark
+            }
+            h.side.setTextColor(ContextCompat.getColor(c, sideColor))
+        }
     }
 }
 

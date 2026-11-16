@@ -35,18 +35,10 @@
             android:key="stt_engine"
             android:title="Motor de transcrição"
             app:useSimpleSummaryProvider="true" />
-        <ListPreference
-            android:defaultValue="none"
-            android:entries="@array/voice_fx_entries"
-            android:entryValues="@array/voice_fx_values"
-            android:key="voice_fx"
-            android:title="Efeito na sua voz"
-            app:useSimpleSummaryProvider="true" />
-        <SwitchPreferenceCompat
-            android:defaultValue="false"
-            android:key="voice_fx_live"
-            android:summary="Experimental: aplica o efeito ao vivo pelo alto-falante durante a ligação — nesse modo a voz do interlocutor deixa de ser captada"
-            android:title="Aplicar efeito ao vivo" />
+        <Preference
+            android:key="voices"
+            android:summary="Presets, clones de voz, teste e o efeito ao vivo na ligação"
+            android:title="Vozes e efeitos" />
         <Preference
             android:key="models"
             android:summary="Baixar e escolher modelos offline (Vosk / Parakeet)"

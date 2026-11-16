@@ -10,22 +10,31 @@ import android.media.AudioTrack
 /**
  * Loop do efeito ao vivo (experimental): processa a voz capturada e reproduz
  * no alto-falante para que o microfone da ligação transmita a voz com efeito.
+ * Troca de voz em tempo real: `params` é mutável e vale a partir do próximo
+ * bloco (~100 ms) — a tela de ligação usa isso para trocar "como um filtro de
+ * câmera" durante a chamada.
+ *
  * Traje conhecido: nesse modo o interlocutor não é capturado para gravação/
  * transcrição — a captura VOICE_COMMUNICATION foca na voz do usuário.
  */
 class VoiceFxLoop(
     private val context: Context,
-    private val preset: VoiceFx.Preset,
     private val sampleRate: Int,
 ) {
+
+    /** Efeito corrente; null = bypass (não reproduz nada, evita realimentação). */
+    @Volatile
+    var params: FxParams? = null
 
     private val st = VoiceFx.FxState()
     private var track: AudioTrack? = null
     private var failed = false
 
     fun process(input: ShortArray, frames: Int): ShortArray {
+        val p = params
+        if (p == null) return input
         val out = try {
-            VoiceFx.processBlock(input, frames, preset, st, sampleRate)
+            VoiceFx.processBlock(input, frames, p, st, sampleRate)
         } catch (_: Throwable) {
             input
         }

@@ -48,6 +48,14 @@ object CallSession {
 
     fun isEngineActive(): Boolean = engine != null
 
+    /** Troca o efeito de voz ao vivo DURANTE a ligação corrente (se houver). */
+    fun setLiveEffect(id: String) {
+        synchronized(lock) { engine?.setLiveEffect(id) }
+    }
+
+    /** true quando o loop de efeito ao vivo está no caminho do áudio agora. */
+    fun liveEffectActive(): Boolean = synchronized(lock) { engine?.liveEffectActive() ?: false }
+
     private suspend fun onPhoneEvent(e: PhoneEvent) {
         when (e) {
             is PhoneEvent.Ringing -> {

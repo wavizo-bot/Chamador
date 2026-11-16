@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import androidx.core.content.FileProvider
+import com.telefonechamador.app.audio.VoiceDef
 import com.telefonechamador.app.audio.VoiceFx
 import com.telefonechamador.app.audio.WavWriter
 import com.telefonechamador.app.data.SegmentEntity
@@ -74,7 +75,7 @@ object ShareUtils {
     }
 
     /** Exporta o WAV com um efeito aplicado (offline); devolve o arquivo pronto. */
-    fun exportWithEffect(context: Context, source: File, preset: VoiceFx.Preset): File? = try {
+    fun exportWithEffect(context: Context, source: File, def: VoiceDef): File? = try {
         val bytes = source.readBytes()
         if (bytes.size <= 44 || !String(bytes, 0, 4, Charsets.US_ASCII).contains("RIFF")) {
             null
@@ -84,9 +85,9 @@ object ShareUtils {
                 .order(ByteOrder.LITTLE_ENDIAN)
                 .asShortBuffer()
                 .get(shorts)
-            val fx = VoiceFx.apply(shorts, preset, 16000)
+            val fx = VoiceFx.apply(shorts, def.params, 16000)
             val dir = File(context.getExternalFilesDir(null), "exportado").apply { mkdirs() }
-            val out = File(dir, source.nameWithoutExtension + "-" + preset.id + ".wav")
+            val out = File(dir, source.nameWithoutExtension + "-" + def.id + ".wav")
             val w = WavWriter(out, 16000)
             try { w.append(fx, fx.size) } finally { w.close() }
             out

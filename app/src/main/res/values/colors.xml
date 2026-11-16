@@ -20,6 +20,9 @@
     <color name="cc_night_card">#16291F</color>
     <color name="cc_cream_on_dark">#F2EFE6</color>
     <color name="cc_cream_faint">#B9C4BC</color>
+    <!-- Contraste WCAG sobre cc_night_bg (≥7:1): rótulos e cronômetro da tela de ligação -->
+    <color name="cc_green_on_dark">#8FD8AE</color>
+    <color name="cc_blue_on_dark">#A8C7FA</color>
 
-    <color name="ic_launcher_background">#174A3A</color>
+    <color name="ic_launcher_background">#333D6B</color>
 </resources>

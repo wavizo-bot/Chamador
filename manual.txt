@@ -26,8 +26,10 @@ app/src/main/java/com/telefonechamador/app/
   audio/                     CallRecorder (troca adaptativa de fonte), ShellRecorder
                              (coordenador da gravação via Shizuku), WavWriter,
                              VadGate (piso adaptativo + hangover + pré-roll 400ms),
-                             VoiceFx/VoiceFxLoop (DSP de efeitos), MediaDecode,
-                             AudioSourceProbe
+                             VoiceFx/VoiceFxLoop (DSP de efeitos, params mutáveis
+                             p/ troca ao vivo), VoiceLibrary (12 presets + clones
+                             do usuário em JSON), VoiceClone (pitch/ZCR),
+                             MediaDecode, AudioSourceProbe
   shizuku/                   ShellCapture (usa HiddenApiBypass), UserServiceImpl
                              (instanciado PELO NOME no processo do servidor — R8
                              precisa do keep em proguard-rules.pro), IUserService.aidl
@@ -39,8 +41,12 @@ app/src/main/java/com/telefonechamador/app/
   service/                   CallSessionService (FGS phoneCall|microphone),
                              OverlayService (janela flutuante), BootReceiver
   ui/                        MainActivity (discador/histórico/contatos via bottom_nav),
-                             OngoingCallActivity, CallDetailActivity, SettingsFragment,
-                             SearchFragment, DialpadDialogFragment, ModelActivity,
+                             OngoingCallActivity (transcrição em tela cheia +
+                             SlideToEndView "deslize para encerrar"),
+                             VozesActivity (biblioteca de vozes, teste ao vivo,
+                             calibração e clonagem), CallDetailActivity,
+                             SettingsFragment, SearchFragment,
+                             DialpadDialogFragment, ModelActivity,
                              BlockedNumbersActivity, Adapters
   util/                      Fmt (TEMPO SEM ":" — regra 4.3), Prefs, PrefsDataStore
                              (Ajustes gravam no MESMO arquivo que o motor lê),
@@ -66,7 +72,10 @@ CREDENCIAIS (ONDE ESTÃO, NUNCA O CONTEÚDO)
 - Keystore: nenhuma própria; release assinado com a chave debug para teste local
   (sideload). Ao publicar: criar upload key + App Signing (regra A12).
 - Git: identity local do repositório usa a global do PC (wavizo-bot /
-  coelhuturbo@gmail.com). Repositório público no GitHub: PENDENTE de decisão.
+  coelhuturbo@gmail.com). Repositório público: https://github.com/wavizo-bot/
+  Chamador.git (remote "origin"; criado pelo dono, primeiro push 16/11/2026).
+  gh CLI NÃO existe no PC — usar git push (credenciais do Git Credential
+  Manager) ou API do GitHub com o token do GCM, se um dia precisar.
 
 VERSÕES PUBLICADAS E PENDENTES
 ------------------------------
@@ -97,6 +106,21 @@ TIMELINE E ARMADILHAS
   mesmo na tentativa falha (VAD + Vosk "as metas fiscais desenhados pela lei" +
   stopRecord limpo, sem órfãos). Contexto 2026: redução de 3G nas capitais é
   tendência documentada (3G morre primeiro; 2G fica até ~2028).
+16/11/2026 (noite ~18h–19h): rede NORMALIZOU — ligação de teste COMPLETOU. 5
+  pontos de produto do dono entregues: discagem real (cascata Telecom→
+  ACTION_CALL→DIAL em CallUtils.placeCall), encerramento por INTERRUPTOR
+  DESLIZANTE (SlideToEndView; tela fica acesa, toque não desliga mais),
+  transcrição em TELA CHEIA na ligação (activity_ongoing_call refeita, item
+  17sp, parcial grande, rolagem que segue o fim), TROCA DE VOZ AO VIVO
+  (VoiceFxLoop.params @Volatile; botão "Voz" na tela da ligação vale no
+  próximo bloco ~100 ms), BIBLIOTECA DE VOZES (VoiceLibrary: 12 arquétipos +
+  clones do usuário por DSP de pitch/timbre — VoiceClone; RVC neural fica
+  para fase futura). Contraste WCAG corrigido (AA/AAA no dark e light).
+  Ícones do dono instalados (launcher circular + silhueta branca ic_notif).
+  Teste ponta a ponta PROVADO na build nova: discou, atendeu, trocou voz
+  durante a chamada, encerrou deslizando, linha nova no histórico (01m22s).
+  Detalhe honesto: áudio de teste foi silêncio (ninguém falou perto do
+  secundário) → 0 falas transcritas; rede estava ok.
 Armadilhas já mordidas:
 - MIUI/HyperOS: popup de instalação a CADA adb install (avisar o usuário antes).
 - Depuração Wi-Fi não re-anuncia após reboot: religar na mão (off/on) e conectar
@@ -123,9 +147,13 @@ Aparelhos de teste: principal NZONJBMB4DK7QKWC (goya, HyperOS/Android 16,
   192.168.31.186 porta muda a cada toggle) e secundário b2c132d1 (SIM2 =
   551194757128). Conexão: adb mdns services → adb connect ip:porta.
 Teste de chamada real: discar do principal, atender no secundário
-  (keyevent 5), ~80s de fala, encerrar (keyevent 6), conferir linha nova no
-  banco (número preenchido + segmentos > 0). Em 16/11/2026 isso estava BLOQUEADO
-  pela rede (ver Timeline) — retestar quando a operadora normalizar.
+  (keyevent 5), FALAR DE VERDADE perto do secundário ~80s (áudio em silêncio
+  gera 0 falas e o histórico fica sem transcrição — já aconteceu), encerrar
+  deslizando o SlideToEndView (ou keyevent 6), conferir linha nova no
+  histórico. EM 16/11/2026 (noite) o bloqueio da rede acabou e o ciclo
+  completo foi PROVADO na build nova. Se cair em "Gravação nativa do sistema"
+  (nota âmbar na tela), o áudio sai do MediaRecorder e a transcrição é
+  gerada ao encerrar (Vosk roda no m4a decodificado).
 Referências de padrão: C:\APPS\Regras.txt (obrigatório); exemplos de OAuth/Drive
 em Caderno de Cuidado etc. (inaplicáveis enquanto não houver login Google).
 

@@ -6,7 +6,9 @@ import android.view.View
 import android.widget.TextView
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.button.MaterialButton
@@ -39,25 +41,31 @@ class HistoryFragment : Fragment(R.layout.fragment_history) {
         )
         recycler.adapter = adapter
 
+        // Coleta viva só enquanto a tela está visível (repeatOnLifecycle):
+        // invalidações do Room atualizam a lista em tempo real, e cada volta
+        // à aba reinicia o Flow — reconsulta garantida mesmo se o congelador
+        // do HyperOS (GreezeManager) tiver engolido emissões em background.
         viewLifecycleOwner.lifecycleScope.launch {
-            repo.observeCalls().collect { list ->
-                adapter.submitList(list)
-                empty.isVisible = list.isEmpty()
-                // Atalho: refazer a última ligação feita
-                val lastOut = list.firstOrNull { it.direction == "out" && it.number.isNotBlank() }
-                if (lastOut != null) {
-                    btnRedial.isVisible = true
-                    val label = lastOut.contactName?.takeIf { it.isNotBlank() } ?: lastOut.number
-                    btnRedial.text = "↻  Refazer ligação: $label"
-                    btnRedial.setOnClickListener {
-                        CallUtils.placeCall(requireContext(), lastOut.number)
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                repo.observeCalls().collect { list ->
+                    adapter.submitList(list)
+                    empty.isVisible = list.isEmpty()
+                    // Atalho: refazer a última ligação feita
+                    val lastOut = list.firstOrNull { it.direction == "out" && it.number.isNotBlank() }
+                    if (lastOut != null) {
+                        btnRedial.isVisible = true
+                        val label = lastOut.contactName?.takeIf { it.isNotBlank() } ?: lastOut.number
+                        btnRedial.text = "↻  Refazer ligação: $label"
+                        btnRedial.setOnClickListener {
+                            CallUtils.placeCall(requireContext(), lastOut.number)
+                        }
+                    } else {
+                        btnRedial.isVisible = false
                     }
-                } else {
-                    btnRedial.isVisible = false
-                }
-                if (list.isEmpty() && !imported) {
-                    imported = true
-                    launch { repo.importSystemLog() }
+                    if (list.isEmpty() && !imported) {
+                        imported = true
+                        launch { repo.importSystemLog() }
+                    }
                 }
             }
         }

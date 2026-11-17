@@ -121,6 +121,15 @@ TIMELINE E ARMADILHAS
   durante a chamada, encerrou deslizando, linha nova no histórico (01m22s).
   Detalhe honesto: áudio de teste foi silêncio (ninguém falou perto do
   secundário) → 0 falas transcritas; rede estava ok.
+17/11/2026 (~12h30): BUG DE REFRESH do histórico diagnosticado e corrigido.
+  Invalidação do Room PROVADA viva (estrela re-emite em 25 ms; linha nova
+  aparece na hora; fim de ligação re-emite 2x). Suspeito do sumiço
+  intermitente: congelador GreezeManager do HyperOS. Fix: HistoryFragment
+  coleta com repeatOnLifecycle(STARTED) — reconsulta garantida a cada volta
+  à tela. Release 1.0.1 (versionCode 2) em entregas/android/
+  telefone-chamador-1.0.1-vc2.apk; provada ao vivo (linha "Há 0 minuto" sem
+  reiniciar). Nota de design: ligação sainte NÃO atendida não cria linha
+  (registro só no OFFHOOK).
 Armadilhas já mordidas:
 - MIUI/HyperOS: popup de instalação a CADA adb install (avisar o usuário antes).
 - Depuração Wi-Fi não re-anuncia após reboot: religar na mão (off/on) e conectar
@@ -136,6 +145,11 @@ Armadilhas já mordidas:
 - Ícones vetoriais brancos: pathData sem namespace android: (já corrigido).
 - Ajustes desconectados do motor: resolvido com PrefsDataStore.
 - R8 + UserServiceImpl por reflexão: keep obrigatório (já em proguard-rules.pro).
+- GreezeManager (HyperOS) congela apps em background de forma agressiva e pode
+  engolir emissões de Flow com a tela fechada: o app se auto-cura com a
+  reconsulta do repeatOnLifecycle(STARTED) ao voltar para a tela (fix 1.0.1).
+- Ligação sainte não atendida não cria linha no histórico (beginCall roda só
+  no OFFHOOK): teste rápido "discar e desligar antes de atender" = sem escrita.
 
 COMO RETOMAR COM MÍNIMO ESFORÇO
 -------------------------------

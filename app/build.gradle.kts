@@ -18,8 +18,8 @@ android {
         // de áudio de chamada (VOICE_CALL); 34 mantém a sonda funcionando nos aparelhos
         // que ainda permitem a fonte nativa. Uso manual (sideload), sem Play Store.
         targetSdk = 34
-        versionCode = 2
-        versionName = "1.0.1"
+        versionCode = 3
+        versionName = "1.0.2"
     }
 
     buildTypes {

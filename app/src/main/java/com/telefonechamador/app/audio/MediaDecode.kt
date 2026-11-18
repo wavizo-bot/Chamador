@@ -4,6 +4,7 @@ import android.media.MediaCodec
 import android.media.MediaExtractor
 import android.media.MediaFormat
 import java.io.File
+import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
 /** Decodifica a gravação nativa (AAC/M4A) para PCM mono e reamostra para 16 kHz. */
@@ -101,6 +102,92 @@ object MediaDecode {
             out[i] = (sum / channels).toShort()
         }
         return out
+    }
+
+    /**
+     * Qualquer áudio do aparelho: WAV lido direto do cabeçalho (RIFF/PCM,
+     * o MediaExtractor não abre) e o resto pela via MediaCodec (m4a/aac/mp3…).
+     * Usado pelo Laboratório de voz (ouvir com efeito, clonar, transcrever).
+     */
+    fun decodeAny(file: File): Decoded? {
+        return if (isRiff(file)) readWav(file) else decodeToMono(file)
+    }
+
+    private fun isRiff(file: File): Boolean = try {
+        file.inputStream().use { input ->
+            val b = ByteArray(4)
+            input.read(b) == 4 && String(b, Charsets.US_ASCII) == "RIFF"
+        }
+    } catch (_: Throwable) {
+        false
+    }
+
+    /** Lê WAV PCM 8/16-bit (mono ou estéreo → mono) parseando os chunks RIFF. */
+    fun readWav(file: File): Decoded? {
+        return try {
+            val b = file.readBytes()
+            if (b.size < 44) return null
+            val bb = ByteBuffer.wrap(b).order(ByteOrder.LITTLE_ENDIAN)
+            if (bb.getInt(0) != 0x46464952) return null // "RIFF"
+            var pos = 12
+            var channels = 1
+            var rate = 0
+            var bits = 16
+            var dataOff = -1
+            var dataLen = 0
+            while (pos + 8 <= b.size) {
+                val id = String(b, pos, 4, Charsets.US_ASCII)
+                val size = bb.getInt(pos + 4)
+                if (size < 0) break
+                when (id) {
+                    "fmt " -> {
+                        if (pos + 24 > b.size) break
+                        channels = bb.getShort(pos + 10).toInt().coerceIn(1, 2)
+                        rate = bb.getInt(pos + 12)
+                        bits = bb.getShort(pos + 22).toInt()
+                    }
+                    "data" -> {
+                        dataOff = pos + 8
+                        dataLen = if (size <= 0 || size > b.size - dataOff) b.size - dataOff else size
+                    }
+                }
+                if (rate > 0 && dataOff >= 0) break
+                pos += 8 + size + (size and 1)
+            }
+            if (rate <= 0 || dataOff < 0 || dataLen <= 0) return null
+            when (bits) {
+                16 -> {
+                    val all = ShortArray(dataLen / 2)
+                    bb.position(dataOff)
+                    bb.asShortBuffer().get(all)
+                    if (channels == 1) {
+                        Decoded(rate, all)
+                    } else {
+                        val mono = ShortArray(all.size / channels)
+                        for (i in mono.indices) {
+                            var sum = 0
+                            for (c in 0 until channels) sum += all[i * channels + c]
+                            mono[i] = (sum / channels).toShort()
+                        }
+                        Decoded(rate, mono)
+                    }
+                }
+                8 -> {
+                    val mono = ShortArray(dataLen / channels)
+                    for (i in mono.indices) {
+                        var sum = 0
+                        for (c in 0 until channels) {
+                            sum += ((b[dataOff + i * channels + c].toInt() and 0xFF) - 128) shl 8
+                        }
+                        mono[i] = (sum / channels).toShort()
+                    }
+                    Decoded(rate, mono)
+                }
+                else -> null
+            }
+        } catch (_: Throwable) {
+            null
+        }
     }
 
     fun resampleTo16k(input: ShortArray, inRate: Int): ShortArray {

@@ -40,6 +40,10 @@
             android:summary="Presets, clones de voz, teste e o efeito ao vivo na ligação"
             android:title="Vozes e efeitos" />
         <Preference
+            android:key="lab"
+            android:summary="Grave sua voz sem ligação, ouça com filtros, salve como voz com nome e transcreva áudio"
+            android:title="Laboratório de voz" />
+        <Preference
             android:key="models"
             android:summary="Baixar e escolher modelos offline (Vosk / Parakeet)"
             android:title="Modelos de transcrição" />

@@ -1,6 +1,6 @@
 ================================================================================
 TELEFONE CHAMADOR — MANUAL DE RETOMADA
-Atualizado em 16/11/2026. Regra 1.1 do C:\APPS\Regras.txt: manter a cada entrega.
+Atualizado em 18/11/2026. Regra 1.1 do C:\APPS\Regras.txt: manter a cada entrega.
 ================================================================================
 
 O QUE E
@@ -130,6 +130,24 @@ TIMELINE E ARMADILHAS
   telefone-chamador-1.0.1-vc2.apk; provada ao vivo (linha "Há 0 minuto" sem
   reiniciar). Nota de design: ligação sainte NÃO atendida não cria linha
   (registro só no OFFHOOK).
+18/11/2026 (tarde ~18h35): 5 pedidos do dono entregues — LABORATÓRIO DE VOZ
+  (VoiceLabActivity): grava áudio SEM ligação pelo microfone (até 2 min, WAV
+  16 kHz), toca o ORIGINAL e COM QUALQUER EFEITO da biblioteca (DSP offline
+  VoiceFx.apply), salva a gravação como voz COM NOME PRÓPRIO (VoiceClone.analyze
+  → VoiceLibrary.saveClone, já entra ativa nas ligações) e TRANSCREVE arquivo
+  de áudio sem ligação (Vosk local, timestamps [00m00]). 3 entradas: Ajustes →
+  Laboratório de voz; Vozes → botão "🎙 Laboratório"; detalhe da ligação →
+  botão "🧪 Laboratório" (carrega o áudio da chamada: ouvir com filtro e
+  clonar ANTES de exportar — o "✨ Exportar com efeito" continua ao lado).
+  Leitor WAV genérico novo (RIFF/PCM 8-16 bits, mono/estéreo) + decodeAny no
+  MediaDecode, porque o MediaExtractor não abre WAV. TELA SEMPRE ACESSA em
+  desenvolvimento: FLAG_KEEP_SCREEN_ON em MainActivity + VoiceLab (a da tela
+  de ligação já existia) — confirmado fl=KEEP_SCREEN_ON no dumpsys.
+  FIX de produto: audioFile() do detalhe agora prefere o WAV da rota shell
+  antes do m4a nativo — o chamada.m4a deste HyperOS é SILÊNCIO digital puro
+  (provado com ffmpeg: maxFrame=0 em 47,5 s) e suava ouvir/exportar/clonar mudo.
+  Release 1.0.2 (versionCode 3) em entregas/android/
+  telefone-chamador-1.0.2-vc3.apk (39,0 MB); instalada no principal.
 Armadilhas já mordidas:
 - MIUI/HyperOS: popup de instalação a CADA adb install (avisar o usuário antes).
 - Depuração Wi-Fi não re-anuncia após reboot: religar na mão (off/on) e conectar
@@ -150,6 +168,19 @@ Armadilhas já mordidas:
   reconsulta do repeatOnLifecycle(STARTED) ao voltar para a tela (fix 1.0.1).
 - Ligação sainte não atendida não cria linha no histórico (beginCall roda só
   no OFFHOOK): teste rápido "discar e desligar antes de atender" = sem escrita.
+- M4A NATIVO SILENCIOSO no HyperOS: o chamada.m4a da rota MediaRecorder veio
+  silêncio digital puro (ffmpeg maxFrame=0 em 47,5 s) enquanto o WAV da rota
+  shell tinha voz — audioFile() do detalhe agora ordena WAV antes do m4a;
+  no Laboratório, se o "Salvar como voz" responder "áudio curto ou silencioso",
+  o arquivo escolhido não tem voz (escolher outra ligação ou gravar de novo).
+- Diálogo com campo de texto (ex.: nome da voz no Laboratório): tocar no
+  EditText ABRE o TECLADO e o Android DESLOCA o diálogo para cima — refazer o
+  dump e tocar "Salvar" na posição nova; tap na posição antiga cai no teclado.
+- `adb shell input text` NÃO decodifica acentos (%C3%A7 vira texto literal):
+  para digitar com acento pelo adb, usar `am broadcast`/AdbKeyboard ou nome
+  sem acento (os clones de teste com "%C3%A7" no nome foram apagados).
+- `adb shell am start` não abre activity não-exportada (SecurityException):
+  navegar pela UI (ou deixar a activity exportada só em build de teste).
 
 COMO RETOMAR COM MÍNIMO ESFORÇO
 -------------------------------

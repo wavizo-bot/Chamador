@@ -38,6 +38,8 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+        // Desenvolvimento: mantém a tela acesa enquanto o app está em primeiro plano.
+        window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         setSupportActionBar(findViewById<MaterialToolbar>(R.id.toolbar).apply {
             title = getString(R.string.app_name)
         })

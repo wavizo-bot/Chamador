@@ -54,6 +54,9 @@ class SettingsFragment : PreferenceFragmentCompat() {
         find("voices")?.setOnPreferenceClickListener {
             startActivity(Intent(requireContext(), VozesActivity::class.java)); true
         }
+        find("lab")?.setOnPreferenceClickListener {
+            startActivity(Intent(requireContext(), VoiceLabActivity::class.java)); true
+        }
         find("test_capture")?.setOnPreferenceClickListener { testCapture(); true }
         find("retention_days")?.setOnPreferenceClickListener { askRetention(); true }
         find("notif_ringtone")?.setOnPreferenceClickListener { pickRingtone(); true }

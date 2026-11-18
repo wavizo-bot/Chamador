@@ -1,6 +1,7 @@
 package com.telefonechamador.app.ui
 
 import android.media.MediaPlayer
+import android.content.Intent
 import android.os.Bundle
 import android.widget.ImageButton
 import android.widget.TextView
@@ -56,6 +57,7 @@ class CallDetailActivity : AppCompatActivity() {
         findViewById<MaterialButton>(R.id.btn_share_audio).setOnClickListener { audioFile()?.let { ShareUtils.shareAudio(this, it) } ?: Toast.makeText(this, "Sem gravação para esta ligação.", Toast.LENGTH_SHORT).show() }
         findViewById<MaterialButton>(R.id.btn_play).setOnClickListener { togglePlay() }
         findViewById<MaterialButton>(R.id.btn_fx).setOnClickListener { chooseEffect() }
+        findViewById<MaterialButton>(R.id.btn_lab).setOnClickListener { openLab() }
         findViewById<MaterialButton>(R.id.btn_delete).setOnClickListener { confirmDelete() }
 
         lifecycleScope.launch { reload() }
@@ -91,12 +93,36 @@ class CallDetailActivity : AppCompatActivity() {
         findViewById<ImageButton>(R.id.btn_fav).setImageResource(
             if (c.favorite) R.drawable.ic_star_filled else R.drawable.ic_star
         )
+        findViewById<MaterialButton>(R.id.btn_lab).visibility =
+            if (audioFile() != null) android.view.View.VISIBLE else android.view.View.GONE
     }
 
-    private fun audioFile(): File? =
-        listOfNotNull(call?.audioMixed, call?.audioReceived, call?.audioSent)
+    /** Laboratório com o áudio desta ligação: ouvir com filtro antes de exportar e clonar. */
+    private fun openLab() {
+        val f = audioFile() ?: run {
+            Toast.makeText(this, "Sem gravação para esta ligação.", Toast.LENGTH_SHORT).show()
+            return
+        }
+        startActivity(
+            Intent(this, VoiceLabActivity::class.java)
+                .putExtra("audioPath", f.absolutePath)
+                .putExtra("sourceLabel", "Gravação da ligação"),
+        )
+    }
+
+    /**
+     * Melhor arquivo de áudio da ligação. A rota shell (wav) é a que realmente
+     * capta áudio neste aparelho (HyperOS): o m4a nativo pode vir silencioso —
+     * por isso o wav sempre antes do m4a (ordem misto > recebido > enviado
+     * preservada dentro de cada tipo).
+     */
+    private fun audioFile(): File? {
+        val c = call ?: return null
+        return listOfNotNull(c.audioMixed, c.audioReceived, c.audioSent)
+            .sortedBy { if (it.endsWith(".wav", true)) 0 else 1 }
             .map(::File)
             .firstOrNull { it.exists() && it.length() > 1000 }
+    }
 
     private fun togglePlay() {
         val btn = findViewById<MaterialButton>(R.id.btn_play)

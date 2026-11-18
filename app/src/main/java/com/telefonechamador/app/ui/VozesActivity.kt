@@ -64,6 +64,9 @@ class VozesActivity : AppCompatActivity() {
         findViewById<MaterialButton>(R.id.btn_test).setOnClickListener { testVoice() }
         findViewById<MaterialButton>(R.id.btn_calibrate).setOnClickListener { calibrate() }
         findViewById<MaterialButton>(R.id.btn_clone).setOnClickListener { pickCallToClone() }
+        findViewById<MaterialButton>(R.id.btn_lab).setOnClickListener {
+            startActivity(android.content.Intent(this, VoiceLabActivity::class.java))
+        }
 
         refresh()
     }

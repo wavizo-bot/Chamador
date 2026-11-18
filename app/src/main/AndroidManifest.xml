@@ -85,6 +85,10 @@
             android:exported="false" />
 
         <activity
+            android:name=".ui.VoiceLabActivity"
+            android:exported="false" />
+
+        <activity
             android:name=".ui.BlockedNumbersActivity"
             android:exported="false" />
 

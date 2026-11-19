@@ -35,6 +35,7 @@ import com.telefonechamador.app.call.CallSession
 import com.telefonechamador.app.share.ShareUtils
 import com.telefonechamador.app.stt.ModelManager
 import com.telefonechamador.app.stt.OfflineFileStt
+import com.telefonechamador.app.stt.OfflineFileTts
 import com.telefonechamador.app.util.Fmt
 import com.telefonechamador.app.util.Permissions
 import com.telefonechamador.app.util.Prefs
@@ -115,6 +116,7 @@ class VoiceLabActivity : AppCompatActivity() {
         findViewById<MaterialButton>(R.id.btn_play_fx).setOnClickListener { toggleFx() }
         findViewById<MaterialButton>(R.id.btn_save_voice).setOnClickListener { saveAsVoice() }
         findViewById<MaterialButton>(R.id.btn_transcribe).setOnClickListener { transcribe() }
+        findViewById<MaterialButton>(R.id.btn_speak).setOnClickListener { speak() }
         findViewById<MaterialButton>(R.id.btn_share_text).setOnClickListener {
             transcript?.let {
                 ShareUtils.shareText(this, "Transcrição — $sourceLabel", it)
@@ -547,6 +549,10 @@ class VoiceLabActivity : AppCompatActivity() {
                 this.text = transcript
             }
             findViewById<MaterialButton>(R.id.btn_share_text).visibility = android.view.View.VISIBLE
+            // O texto transcrito cai no campo de fala: é só tocar em "Falar o texto"
+            // (o usuário pode editar antes — este é o fluxo "gravar → transcrever →
+            // reproduzir com a voz" pedido pelo dono).
+            findViewById<EditText>(R.id.et_tts).setText(text)
         }
     }
 
@@ -585,6 +591,96 @@ class VoiceLabActivity : AppCompatActivity() {
         }
     } catch (t: Throwable) {
         android.util.Log.d("TChamador", "labTransc: erro $t")
+        null
+    }
+
+    // ---------- falar texto (TTS Piper: voz GERADA, sem microfone/chiado) ----------
+
+    /**
+     * Texto do campo → síntese Piper (sherpa) → WAV no laboratório → vira a
+     * fonte atual. Assim o usuário ouve a fala limpa, aplica qualquer efeito
+     * e exporta — sem levar junto o ruído de captação do microfone.
+     */
+    private fun speak() {
+        val text = findViewById<EditText>(R.id.et_tts).text.toString().trim()
+        if (text.isEmpty()) {
+            Toast.makeText(this, "Digite um texto (ou toque em Transcrever para preencher).", Toast.LENGTH_SHORT).show()
+            return
+        }
+        val tts = ModelManager.installedTts(this) ?: run {
+            Toast.makeText(
+                this,
+                "Baixe a voz Piper em Configurar → Modelos (voz Piper + fonemas pt-BR).",
+                Toast.LENGTH_LONG,
+            ).show()
+            return
+        }
+        if (!OfflineFileTts.available()) {
+            Toast.makeText(
+                this,
+                "Este build não tem o pacote sherpa-onnx — sem ele a síntese de voz fica indisponível.",
+                Toast.LENGTH_LONG,
+            ).show()
+            return
+        }
+        stopOriginal()
+        stopFx()
+        val btn = findViewById<MaterialButton>(R.id.btn_speak)
+        btn.isEnabled = false
+        btn.text = "⏳  Gerando fala…"
+        lifecycleScope.launch {
+            val res = withContext(Dispatchers.Default) {
+                OfflineFileTts.synthesize(
+                    ModelManager.modelDir(this@VoiceLabActivity, tts.first),
+                    tts.second,
+                    text,
+                )
+            }
+            btn.isEnabled = true
+            btn.text = "🔊  Falar o texto"
+            val samples = res?.get("samples") as? FloatArray
+            val rate = (res?.get("sampleRate") as? Int) ?: 0
+            if (samples == null || samples.isEmpty() || rate <= 0) {
+                android.util.Log.d("TChamador", "labTts: falhou res=${res != null} rate=$rate")
+                Toast.makeText(
+                    this@VoiceLabActivity,
+                    "Não consegui sintetizar esse texto (modelo ausente ou texto inválido).",
+                    Toast.LENGTH_LONG,
+                ).show()
+                return@launch
+            }
+            val wav = withContext(Dispatchers.IO) { writeTtsWav(samples, rate) }
+            if (wav == null) {
+                Toast.makeText(this@VoiceLabActivity, "Fala gerada, mas falhou ao salvar o arquivo.", Toast.LENGTH_LONG).show()
+                return@launch
+            }
+            android.util.Log.d(
+                "TChamador",
+                "labTts: ok chars=${text.length} samples=${samples.size} rate=$rate wav=${wav.length()}B",
+            )
+            setSource(wav, "Fala gerada (voz Piper)")
+            Toast.makeText(
+                this@VoiceLabActivity,
+                "Fala pronta ✔ — toque em ▶ Original ou escolha um efeito.",
+                Toast.LENGTH_LONG,
+            ).show()
+        }
+    }
+
+    /** FloatArray do TTS (−1..1) → WAV 16-bit no diretório do laboratório. */
+    private fun writeTtsWav(samples: FloatArray, rate: Int): File? = try {
+        val dir = File(filesDir, "lab").apply { mkdirs() }
+        val file = File(dir, "tts_${System.currentTimeMillis()}.wav")
+        val wav = WavWriter(file, rate)
+        val shorts = ShortArray(samples.size)
+        for (i in samples.indices) {
+            val v = (samples[i] * 32767.0f).coerceIn(-32768f, 32767f)
+            shorts[i] = v.toInt().toShort()
+        }
+        wav.append(shorts, shorts.size)
+        wav.close()
+        if (wav.hasContent && file.length() > 44 + rate) file else { file.delete(); null }
+    } catch (_: Throwable) {
         null
     }
 

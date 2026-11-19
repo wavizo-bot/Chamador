@@ -132,6 +132,19 @@ class ShellRecorder(
      * novos e troca de candidata quando a fonte entrega zeros.
      */
     private suspend fun runLoop() {
+        Log.d(TAG, "shell tailer iniciado (poll=${POLL_MS} ms, rms a cada ${POLL_MS * CHECK_EVERY} ms)")
+        try {
+            runLoopInner()
+        } catch (t: Throwable) {
+            // Uma exceção aqui mata o tailer em silêncio: a sessão shell
+            // segue gravando até o heartbeat expirar (60 s) e a ligação perde
+            // a transcrição sem nenhum sintoma no app. Loga sempre.
+            Log.d(TAG, "shell tailer MORREU: ${t.javaClass.simpleName}: ${t.message}")
+            onEnded?.invoke(false)
+        }
+    }
+
+    private suspend fun runLoopInner() {
         var candIdx = 0
         while (job?.isActive == true) {
             if (live == null) {

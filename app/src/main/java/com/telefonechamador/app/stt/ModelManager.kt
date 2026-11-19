@@ -21,8 +21,9 @@ data class SttModelDef(
     val sizeMb: Int,
     val url: String,
     val dirName: String,
-    val format: String,          // "zip" | "tbz"
+    val format: String,          // "zip" | "tbz" | "files"
     val requiredFiles: List<String>,
+    val kind: String = "asr",    // "asr" = transcrição | "tts" = voz p/ falar | "tts-data" = apoio do TTS
 )
 
 object ModelManager {
@@ -56,6 +57,21 @@ object ModelManager {
             "parakeet-ptbr-int8", "files",
             listOf("encoder.int8.onnx", "decoder.int8.onnx", "joiner.int8.onnx", "tokens.txt"),
         ),
+        // ---- TTS (Laboratório): texto transcrito → fala limpa, GERADA
+        // (sem microfone, sem chiado de captação) — ver SherpaTts/OfflineFileTts.
+        SttModelDef(
+            "tts_espeak", ENGINE_SHERPA,
+            "Fonemas pt-BR (espeak-ng) — apoio das vozes Piper", 7,
+            "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/espeak-ng-data.tar.bz2",
+            "espeak-ng-data", "tbz", listOf("phontab"), "tts-data",
+        ),
+        SttModelDef(
+            "tts_piper_jeff", ENGINE_SHERPA,
+            "Voz Piper pt-BR (Jeff) — fala gerada para texto do Laboratório", 20,
+            "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-pt_BR-jeff-medium-int8.tar.bz2",
+            "vits-piper-pt_BR-jeff-medium-int8", "tbz",
+            listOf("pt_BR-jeff-medium.onnx", "pt_BR-jeff-medium.onnx.json", "tokens.txt"), "tts",
+        ),
     )
 
     @Volatile
@@ -71,8 +87,20 @@ object ModelManager {
      */
     fun installedSherpa(context: Context, preferredId: String? = null): SttModelDef? =
         (preferredId?.let { byId(it) }
-            ?.takeIf { it.engine == ENGINE_SHERPA && isInstalled(context, it) })
-            ?: MODELS.firstOrNull { it.engine == ENGINE_SHERPA && isInstalled(context, it) }
+            ?.takeIf { it.kind == "asr" && it.engine == ENGINE_SHERPA && isInstalled(context, it) })
+            ?: MODELS.firstOrNull {
+                it.kind == "asr" && it.engine == ENGINE_SHERPA && isInstalled(context, it)
+            }
+
+    /**
+     * Voz TTS instalada (Piper) + diretório do espeak-ng-data, que o Piper
+     * precisa para fonemizar o pt-BR. Null se faltar qualquer um dos dois.
+     */
+    fun installedTts(context: Context): Pair<SttModelDef, File>? {
+        val voice = MODELS.firstOrNull { it.kind == "tts" && isInstalled(context, it) } ?: return null
+        val espeak = MODELS.firstOrNull { it.kind == "tts-data" && isInstalled(context, it) } ?: return null
+        return voice to modelDir(context, espeak)
+    }
 
     fun modelsDir(context: Context): File =
         File(context.filesDir, "stt-models").apply { mkdirs() }

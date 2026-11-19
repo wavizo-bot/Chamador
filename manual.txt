@@ -179,6 +179,41 @@ TIMELINE E ARMADILHAS
    (textLen=295 num TTS de 27 s). ABI só arm64-v8a (o AAR traz .so de 4
    ABIs: APK de 166 → ~48 MB). Release 1.0.3 (versionCode 4) em
    entregas/android/telefone-chamador-1.0.3-vc4.apk; instalada no principal.
+ 19/11/2026 (dia): VERDADE SOBRE A "CLONAGEM" + ETAPA 1 DO CAMINHO NOVO. O
+   dono suspeitou (corretamente) que a clonagem atual é só DSP — CONFIRMADO:
+   VoiceClone/VoiceLibrary mudam pitch e timbre da voz QUE JÁ EXISTE, não
+   aprendem a fala de ninguém. Caminho novo pedido pelo dono (aceita atraso):
+   transcrever → reproduzir o texto com a voz escolhida/voz personalizada.
+   ETAPA 1 ENTREGUE: TTS Piper pt-BR (jeff medium int8, 20 MB) + espeak-ng-data
+   (7 MB) via sherpa-onnx OfflineTts — MESMO caminho de download .tar.bz2 do
+   ModelManager (defs tts_espeak/tts_piper_jeff, campo kind asr/tts separa os
+   modelos; installedSherpa passa a filtrar só ASR). No Laboratório: campo de
+   texto + botão "🔊 Falar o texto" gera WAV 22050 Hz e vira a FONTE do efeito
+   (gravar → transcrever → editar → falar → ouvir com filtro), e o "Salvar
+   como voz" da voz Piper já serve de alvo para os clones. PROVADO no aparelho:
+   sherpaTts ok samples=90870 rate=22050; fluxo completo gravar(21 s) →
+   transcrever (textLen=227) → Falar (chars=229, 12,2 s de fala) → Original e
+   Efeito tocam. Etapas seguintes (pesquisa já feita, licenças checadas —
+   GPL/AGPL descartados): 2) Kokoro int8 pt-BR; 3) Voice Conversion zero-shot
+   (MeanVC2 Apache-2.0 ou OpenVoice v2 MIT) para imitar de verdade a voz gravada.
+19/11/2026 (tarde): SMOKE TEST SHIZUKU AO VIVO VALIDADO (call 74, 213 s). O
+   caminho que FUNCIONA neste HyperOS é o serviço shell do Shizuku (uid 2000):
+   o app nunca capta a chamada sozinho (MIUI bloqueia: allowCapture[0]) e o
+   MediaRecorder nativo de fallback gravou silêncio digital nas ligações 66–73
+   (rmsMedio=0 → 0 falas). Com o servidor Shizuku no ar, a call 74 gravou
+   audio.wav íntegro (6.700.844 B = 44 + 6.700.800, ~209 s) e transcreveu AO
+   VIVO 4 segmentos pela fala do PC (log shell rms=279/282/276 → VAD → final
+   recebido side=mixed) + 1 segmento pós-ligação = 5 falas no histórico, com
+   timestamps. Chamada 70 (18/11) morreu aos 60 s por "heartbeat expirou (sem
+   consultas do app)" — causa não reproduzida (logcat girou); para a próxima
+   ser inequívoca, ShellRecorder.runLoop agora loga o início ("shell tailer
+   iniciado") e QUALQUER exceção que mate o tailer ("shell tailer MORREU") —
+   antes o app perdia a transcrição em silêncio. REA (morluto/rea, MIT, v6.9.0,
+   instalado com autorização do dono) usado de verdade: decodifiquei o APK do
+   Google TTS (com.google.android.tts) com decode-android-resources (apktool
+   2.12.0 via REA_APKTOOL_COMMAND) — manifest, permissões e versão lidos.
+   Release 1.0.4 (versionCode 5) em entregas/android/
+   telefone-chamador-1.0.4-vc5.apk; instalada no principal.
 Armadilhas já mordidas:
 - MIUI/HyperOS: popup de instalação a CADA adb install (avisar o usuário antes).
 - Depuração Wi-Fi não re-anuncia após reboot: religar na mão (off/on) e conectar
@@ -226,6 +261,25 @@ Armadilhas já mordidas:
   (quebra com "op_Modulus"): usar nomes distintos ($BLEN).
 - AAR do sherpa-onnx embute .so de 4 ABIs (157 MB): sem ndk.abiFilters o APK
   vai para 166 MB — filtrar para arm64-v8a (48 MB).
+- logcat GIRAR durante o teste: o buffer do aparelho tem 300k+ linhas de outras
+  tags e engole tudo do TChamador em poucas horas — para diagnosticar uma
+  chamada, limpar (logcat -c) e gravar CONTÍNUO para arquivo com
+  `logcat -v time -s TChamador:* TChamador.Shizuku:*` (Start-Process -Redirect)
+  desde o início do teste; depois é tarde demais (já aconteceu: a chamada 70
+  ficou sem sintoma recuperável).
+- O campo do discador às vezes já vem com um número de uma sessão anterior
+  (aconteceu: abriu com 943983852 e o número novo entrou COLADO no antigo,
+  943983852947571285, e o Ligar saiu para o errado): antes de digitar, apagar
+  tudo com ⌫ ((520,1906)) e conferir o campo por uiautomator dump.
+- Shizuku morre a cada reboot (não há root): reiniciar com
+  `adb shell sh /storage/emulated/0/Android/data/moe.shizuku.privileged.api/start.sh`
+  e conferir `ps -A | grep shizuku` (shizuku_server uid shell) — sem servidor,
+  a captura cai para a rota nativa que o HyperOS bloqueia (silêncio).
+- REA (rea v6.9.0) sem provider profundo: `rea analyze` de APK exige Ghidra
+  (GHIDRA_INSTALL_DIR, não instalado) — o que funciona SEM instalar nada é
+  `rea decode-android-resources` (apktool). O apktool 2.12.0 NÃO aceita
+  `--version` (o REA exige) → wrapper .bat que responde `2.12.0` e repassa o
+  resto para o jar, com REA_APKTOOL_COMMAND apontando para o wrapper.
 
 COMO RETOMAR COM MÍNIMO ESFORÇO
 -------------------------------

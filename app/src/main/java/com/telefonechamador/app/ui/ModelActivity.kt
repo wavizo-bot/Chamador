@@ -45,8 +45,9 @@ class ModelActivity : AppCompatActivity() {
                 }
                 adapter.clearBusy()
                 setStatus(if (ok) "Concluído ✔" else "Download interrompido ou falhou.")
-                if (ok && def.engine == ModelManager.ENGINE_SHERPA) {
-                    // Modelo Parakeet instalado vira o preferido da engine sherpa.
+                if (ok && def.engine == ModelManager.ENGINE_SHERPA && def.kind == "asr") {
+                    // Modelo Parakeet instalado vira o preferido da engine sherpa
+                    // (só ASR: um TTS nunca pode virar o modelo de transcrição).
                     Prefs.sherpaModel = def.id
                 }
                 if (!ok) Toast.makeText(
@@ -84,7 +85,8 @@ class ModelActivity : AppCompatActivity() {
             if (id == R.id.rb_sherpa) {
                 val libOk = OfflineFileStt.available()
                 val hasModel = ModelManager.MODELS.any {
-                    it.engine == ModelManager.ENGINE_SHERPA && ModelManager.isInstalled(this, it)
+                    it.kind == "asr" && it.engine == ModelManager.ENGINE_SHERPA &&
+                        ModelManager.isInstalled(this, it)
                 }
                 val msg = when {
                     !libOk -> "Parakeet exige o pacote sherpa-onnx incluído no build; sem ele, o app volta ao Vosk."
@@ -128,7 +130,11 @@ class ModelAdapter(private val onAction: (SttModelDef, Int) -> Unit) :
         h.status.text = buildString {
             append(if (installed) "Instalado" else "${def.sizeMb} MB para baixar")
             append(" • ")
-            append(if (def.engine == ModelManager.ENGINE_SHERPA) "motor Parakeet" else "motor Vosk")
+            append(when {
+                def.kind != "asr" -> "voz do Laboratório"
+                def.engine == ModelManager.ENGINE_SHERPA -> "motor Parakeet"
+                else -> "motor Vosk"
+            })
         }
         h.action.text = if (installed) "Excluir" else "Baixar"
         h.progress.visibility = if (busy.contains(pos)) View.VISIBLE else View.GONE

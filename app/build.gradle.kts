@@ -18,8 +18,15 @@ android {
         // de áudio de chamada (VOICE_CALL); 34 mantém a sonda funcionando nos aparelhos
         // que ainda permitem a fonte nativa. Uso manual (sideload), sem Play Store.
         targetSdk = 34
-        versionCode = 3
-        versionName = "1.0.2"
+        // Só arm64: o AAR do sherpa-onnx embute .so de 4 ABIs (157 MB no APK;
+        // x86/x86_64 só servem em emulador) — de 166 MB para ~48 MB. Os
+        // aparelhos de teste (HyperOS) são arm64; se um dia precisar de 32-bit,
+        // adicionar "armeabi-v7a" aqui (+29 MB).
+        ndk {
+            abiFilters += setOf("arm64-v8a")
+        }
+        versionCode = 4
+        versionName = "1.0.3"
     }
 
     buildTypes {

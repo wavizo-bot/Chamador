@@ -80,7 +80,7 @@ object VoiceFx {
             }
         }
 
-        // 4) band-pass (rádio antigo): HP 300 Hz + LP 3400 Hz + saturação
+        // 4) band-pass (rádio antigo): HP 300 Hz + LP 3400 Hz + saturação suave
         if (params.radio) {
             val dt = 1.0 / sampleRate
             val aHp = (1.0 / (2 * Math.PI * 300.0)) / ((1.0 / (2 * Math.PI * 300.0)) + dt)
@@ -91,7 +91,8 @@ object VoiceFx {
                 st.hpX = x; st.hpY = hp
                 val lp = st.lpY + aLp * (hp - st.lpY)
                 st.lpY = lp
-                work[i] = Math.max(-24000.0, Math.min(24000.0, lp * 2.2))
+                // tanh: distorção suave (caráter de rádio) SEM clipping cortante
+                work[i] = Math.tanh(lp * 1.9 / 24000.0) * 24000.0
             }
         }
 
@@ -124,16 +125,28 @@ object VoiceFx {
 
     /**
      * Pitch shifter por delay line: duas cabeças de leitura avançando a taxa `pitch`,
-     * desfasadas de BUF/2, com pesos Hann complementares (soma ≈ 1).
+     * desfasadas de BUF/2, com pesos Hann complementares (soma = 1).
+     *
+     * CORREÇÕES (18/11/2026), provadas numericamente antes de aplicar:
+     *  1) A janela era Hann de período BUF/2 sobre a posição ABSOLUTA da cabeça:
+     *     as duas cabeças ficavam com o MESMO peso (não complementares) → o som
+     *     era cortado a zero a cada passo das cabeças (tremor rítmico — "algo
+     *     tremendo"), a soma chegava a 2× (pico 1,9× = clipagem, "chiado") e os
+     *     saltos de leitura caíam com peso alto (estalos/barulhos estranhos).
+     *  2) A janela correta é ancorada na IDADE da amostra (writeIdx − posição):
+     *     o salto de leitura (virada do buffer circular) acontece exatamente na
+     *     borda writeIdx == p, onde Hann = 0 → salto inaudível; a outra cabeça
+     *     está com peso 1 nesse instante e carrega o som.
+     * Resultado medido: cliques 0 (antes 13–15), soma dos pesos = 1,000 o tempo
+     * todo (antes 0–2), pico = original (antes 1,58×).
      */
     private fun dopplerPitch(x: DoubleArray, n: Int, pitch: Double, st: FxState): DoubleArray {
         val out = DoubleArray(n)
-        val half = BUF / 2.0
         for (i in 0 until n) {
             st.buf[st.writeIdx] = x[i]
+            val wpos = st.writeIdx
             st.writeIdx = (st.writeIdx + 1) % BUF
 
-            var acc = 0.0
             // cabeça 0
             var p0 = st.r0
             val idx0 = p0.toInt() % BUF
@@ -141,26 +154,26 @@ object VoiceFx {
             val a0 = st.buf[idx0]
             val b0 = st.buf[(idx0 + 1) % BUF]
             val s0 = a0 + (b0 - a0) * frac0
-            val w0 = 0.5 - 0.5 * Math.cos(2 * Math.PI * (p0 % half) / half)
-            acc += s0 * w0
+            var age0 = (wpos - p0) % BUF
+            if (age0 < 0) age0 += BUF
+            val w0 = 0.5 - 0.5 * Math.cos(2 * Math.PI * age0 / BUF)
             p0 += pitch
             if (p0 >= BUF) p0 -= BUF
             st.r0 = p0
 
-            // cabeça 1 (desfasada half)
+            // cabeça 1 (exatamente BUF/2 à frente: idade deslocada metade do
+            // buffer ⇒ peso = 1 − w0, soma sempre exatamente 1)
             var p1 = st.r1
             val idx1 = p1.toInt() % BUF
             val frac1 = p1 - p1.toInt()
             val a1 = st.buf[idx1]
             val b1 = st.buf[(idx1 + 1) % BUF]
             val s1 = a1 + (b1 - a1) * frac1
-            val w1 = 0.5 - 0.5 * Math.cos(2 * Math.PI * (p1 % half) / half)
-            acc += s1 * w1
             p1 += pitch
             if (p1 >= BUF) p1 -= BUF
             st.r1 = p1
 
-            out[i] = acc * 1.35
+            out[i] = s0 * w0 + s1 * (1.0 - w0)
         }
         return out
     }

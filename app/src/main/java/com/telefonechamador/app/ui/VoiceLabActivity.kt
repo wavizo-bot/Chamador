@@ -34,6 +34,7 @@ import com.telefonechamador.app.audio.WavWriter
 import com.telefonechamador.app.call.CallSession
 import com.telefonechamador.app.share.ShareUtils
 import com.telefonechamador.app.stt.ModelManager
+import com.telefonechamador.app.stt.OfflineFileStt
 import com.telefonechamador.app.util.Fmt
 import com.telefonechamador.app.util.Permissions
 import com.telefonechamador.app.util.Prefs
@@ -69,6 +70,9 @@ class VoiceLabActivity : AppCompatActivity() {
     // reprodução com efeito (AudioTrack em thread, troca por geração)
     @Volatile private var fxGen = 0
     @Volatile private var fxTrack: AudioTrack? = null
+    // true enquanto o efeito está tocando OU sendo processado ("Aplicando…"):
+    // é o que faz o botão virar toggle (parar) em vez de reiniciar.
+    @Volatile private var fxBusy = false
 
     // gravação do microfone
     @Volatile private var recording = false
@@ -108,7 +112,7 @@ class VoiceLabActivity : AppCompatActivity() {
             openLauncher.launch(arrayOf("audio/*"))
         }
         findViewById<MaterialButton>(R.id.btn_play_orig).setOnClickListener { toggleOriginal() }
-        findViewById<MaterialButton>(R.id.btn_play_fx).setOnClickListener { playWithEffect() }
+        findViewById<MaterialButton>(R.id.btn_play_fx).setOnClickListener { toggleFx() }
         findViewById<MaterialButton>(R.id.btn_save_voice).setOnClickListener { saveAsVoice() }
         findViewById<MaterialButton>(R.id.btn_transcribe).setOnClickListener { transcribe() }
         findViewById<MaterialButton>(R.id.btn_share_text).setOnClickListener {
@@ -291,6 +295,12 @@ class VoiceLabActivity : AppCompatActivity() {
         findViewById<MaterialButton>(R.id.btn_play_orig).text = "▶  Original"
     }
 
+    /** Toggle: se está tocando/processando, PARA; senão, inicia. */
+    private fun toggleFx() {
+        if (fxBusy) stopFx()
+        else playWithEffect()
+    }
+
     /** Ouve o áudio atual com o efeito escolhido no seletor (DSP local). */
     private fun playWithEffect() {
         val def = selectedVoice() ?: run {
@@ -305,9 +315,13 @@ class VoiceLabActivity : AppCompatActivity() {
         stopFx()
         val btn = findViewById<MaterialButton>(R.id.btn_play_fx)
         btn.text = "⏳  Aplicando…"
+        fxBusy = true
+        val gen = fxGen
         lifecycleScope.launch {
             val pcm = withContext(Dispatchers.IO) { loadPcm16k(f) }
+            if (gen != fxGen) return@launch   // o usuário parou enquanto lia o arquivo
             if (pcm == null) {
+                fxBusy = false
                 btn.text = "🎧  Com o efeito"
                 Toast.makeText(this@VoiceLabActivity, "Não consegui ler esse áudio.", Toast.LENGTH_SHORT).show()
                 return@launch
@@ -316,6 +330,7 @@ class VoiceLabActivity : AppCompatActivity() {
                 try { VoiceFx.apply(pcm, def.params, VoiceClone.SAMPLE_RATE) }
                 catch (_: Throwable) { pcm }
             }
+            if (gen != fxGen) return@launch   // o usuário parou enquanto processava
             startFxPlayback(out, def)
         }
     }
@@ -323,6 +338,7 @@ class VoiceLabActivity : AppCompatActivity() {
     private fun startFxPlayback(pcm: ShortArray, def: VoiceDef) {
         val btn = findViewById<MaterialButton>(R.id.btn_play_fx)
         btn.text = "■  Parar (${def.label})"
+        fxBusy = true
         val gen = fxGen
         thread(name = "lab-fx") {
             try {
@@ -356,6 +372,8 @@ class VoiceLabActivity : AppCompatActivity() {
                 try { t.release() } catch (_: Throwable) { }
             } catch (_: Throwable) { }
             if (fxGen == gen) {
+                // terminou sozinho: libera o toggle para o próximo toque
+                fxBusy = false
                 runOnUiThread {
                     if (fxGen == gen) btn.text = "🎧  Com o efeito"
                 }
@@ -365,6 +383,7 @@ class VoiceLabActivity : AppCompatActivity() {
 
     private fun stopFx() {
         fxGen++
+        fxBusy = false
         val t = fxTrack
         fxTrack = null
         try { t?.stop() } catch (_: Throwable) { }
@@ -468,6 +487,11 @@ class VoiceLabActivity : AppCompatActivity() {
             Toast.makeText(this, "Grave ou abra um áudio primeiro.", Toast.LENGTH_SHORT).show()
             return
         }
+        // Parakeet/sherpa (UM parágrafo, WER ~5–14) quando a engine dele está
+        // escolhida e um modelo está instalado; senão Vosk local ([mm:ss] em blocos).
+        val sherpaDef = if (Prefs.sttEngine == Prefs.ENGINE_SHERPA) {
+            ModelManager.installedSherpa(this, Prefs.sherpaModel)
+        } else null
         var def = ModelManager.byId(Prefs.voskModel)
             ?: ModelManager.MODELS.first { it.id == "vosk_small_pt" }
         if (!ModelManager.isInstalled(this, def)) {
@@ -476,7 +500,7 @@ class VoiceLabActivity : AppCompatActivity() {
             }
             if (alt != null) def = alt
         }
-        if (!ModelManager.isInstalled(this, def)) {
+        if (sherpaDef == null && !ModelManager.isInstalled(this, def)) {
             Toast.makeText(
                 this, "Baixe o modelo de transcrição em Configurar → Modelos de transcrição.", Toast.LENGTH_LONG,
             ).show()
@@ -487,10 +511,26 @@ class VoiceLabActivity : AppCompatActivity() {
         val btn = findViewById<MaterialButton>(R.id.btn_transcribe)
         btn.isEnabled = false
         btn.text = "⏳  Transcrevendo…"
-        val dir = ModelManager.modelDir(this, def)
         lifecycleScope.launch {
-            val text = withContext(Dispatchers.Default) { voskFileText(dir, f) }
-            android.util.Log.d("TChamador", "labTransc: textLen=${text?.length ?: -1} dir=${dir.name}")
+            val text = withContext(Dispatchers.Default) {
+                if (sherpaDef != null) {
+                    val pcm = loadPcm16k(f)
+                    if (pcm != null && pcm.isNotEmpty()) {
+                        OfflineFileStt.transcribe(
+                            ModelManager.modelDir(this@VoiceLabActivity, sherpaDef),
+                            VoiceClone.SAMPLE_RATE,
+                            pcm,
+                        )
+                    } else null
+                } else {
+                    voskFileText(ModelManager.modelDir(this@VoiceLabActivity, def), f)
+                }
+            }
+            android.util.Log.d(
+                "TChamador",
+                "labTransc: engine=${if (sherpaDef != null) "sherpa/" + sherpaDef.id else "vosk"} " +
+                    "textLen=${text?.length ?: -1}",
+            )
             btn.isEnabled = true
             btn.text = "📝  Transcrever"
             if (text.isNullOrBlank()) {

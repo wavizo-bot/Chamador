@@ -16,6 +16,10 @@ build/
 .build/
 .probe/
 app/build/
+# AAR do sherpa-onnx (47,8 MB): baixar de github.com/k2-fsa/sherpa-onnx/releases
+# (sherpa-onnx-1.13.8.aar) e pôr em app/libs/ — sem ele o build sai sem o motor
+# Parakeet, pela flag sherpaAvailable do build.gradle.kts
+app/libs/
 captures/
 .externalNativeBuild/
 .cxx/

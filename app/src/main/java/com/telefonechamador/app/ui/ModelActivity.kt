@@ -18,6 +18,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.appbar.MaterialToolbar
 import com.telefonechamador.app.R
 import com.telefonechamador.app.stt.ModelManager
+import com.telefonechamador.app.stt.OfflineFileStt
 import com.telefonechamador.app.stt.SttModelDef
 import com.telefonechamador.app.util.Prefs
 import kotlinx.coroutines.launch
@@ -44,6 +45,10 @@ class ModelActivity : AppCompatActivity() {
                 }
                 adapter.clearBusy()
                 setStatus(if (ok) "Concluído ✔" else "Download interrompido ou falhou.")
+                if (ok && def.engine == ModelManager.ENGINE_SHERPA) {
+                    // Modelo Parakeet instalado vira o preferido da engine sherpa.
+                    Prefs.sherpaModel = def.id
+                }
                 if (!ok) Toast.makeText(
                     this@ModelActivity,
                     "Falha no download — toque em Baixar de novo (retoma de onde parou).",
@@ -77,11 +82,16 @@ class ModelActivity : AppCompatActivity() {
         rgEngine.setOnCheckedChangeListener { _, id ->
             Prefs.sttEngine = if (id == R.id.rb_sherpa) Prefs.ENGINE_SHERPA else Prefs.ENGINE_VOSK
             if (id == R.id.rb_sherpa) {
-                Toast.makeText(
-                    this,
-                    "Parakeet exige o pacote sherpa-onnx incluído no build; sem ele, o app volta ao Vosk.",
-                    Toast.LENGTH_LONG,
-                ).show()
+                val libOk = OfflineFileStt.available()
+                val hasModel = ModelManager.MODELS.any {
+                    it.engine == ModelManager.ENGINE_SHERPA && ModelManager.isInstalled(this, it)
+                }
+                val msg = when {
+                    !libOk -> "Parakeet exige o pacote sherpa-onnx incluído no build; sem ele, o app volta ao Vosk."
+                    !hasModel -> "Motor Parakeet ativado — baixe um modelo Parakeet abaixo para usá-lo."
+                    else -> "Motor Parakeet ativado — transcrição em parágrafo completo."
+                }
+                Toast.makeText(this, msg, Toast.LENGTH_LONG).show()
             }
         }
         rgVosk.setOnCheckedChangeListener { _, id ->

@@ -148,6 +148,37 @@ TIMELINE E ARMADILHAS
   (provado com ffmpeg: maxFrame=0 em 47,5 s) e suava ouvir/exportar/clonar mudo.
   Release 1.0.2 (versionCode 3) em entregas/android/
   telefone-chamador-1.0.2-vc3.apk (39,0 MB); instalada no principal.
+18/11/2026 (noite ~19h–21h): FEEDBACK DO DONO À 1.0.2 — 3 consertos + a nota 6
+   da transcrição atacada na raiz. (1) BUG "🎧 Com o efeito" do Laboratório:
+   virou toggle de verdade — estado fxBusy cobre o "Aplicando…" e a
+   reprodução, e a guarda de geração (gen != fxGen) cancela leitura/processo
+   enquanto o usuário tenta parar; antes todo toque reiniciava. Testado no
+   aparelho: toque vira "■ Parar", toque de novo volta a "🎧 Com o efeito",
+   1ª tentativa em ambos os sentidos. (2) Efeito "chiado/tremendo" LIMPÓ: o
+   pitch shifter cortava o som a zero a cada passo das duas cabeças de
+   leitura — a janela Hann tinha período BUF/2 sobre a posição ABSOLUTA (as
+   duas cabeças com o MESMO peso, não complementares; a soma oscilava 0→2) e
+   o resultado era ×1,35 (pico 1,58× = clipping). Correção: janela ancorada
+   na IDADE (writeIdx − posição), Hann de período BUF, soma exatamente 1 —
+   provada em simulação ANTES de editar (cliques 0 contra 13–15; soma 1,000
+   constante; pico = original). Rádio: saturação tanh suave no lugar do
+   clamp lp×2.2 (sumiram os estalos de recorte). A/B para o dono ouvir:
+   /sdcard/Music/VOZ-ANTES-dsp-antigo.wav vs VOZ-DEPOIS-dsp-novo.wav
+   (maxStep 731→342; envelope 2,8×→1,9× de variação). (3) TRANSCRIÇÃO EM
+   PARÁGRAFO de verdade: AAR sherpa-onnx 1.13.8 (47,8 MB) em app/libs/ ativa
+   o source set src/sherpa (flag sherpaAvailable; AAR FORA do git — URL da
+   release no .gitignore) e o modelo fine-tune TAGARELA "parakeet_ptbr"
+   (640 MB do HuggingFace, CC-BY-4.0, download de arquivos soltos com
+   retomada .part; WER ~5 em fala preparada e ~14 espontânea, contra 27/54
+   do FalaBrazil e 69/33 do vosk-small). Laboratório e transcrição
+   pós-ligação agora roteiam por OfflineFileStt.transcribe (UM passe sobre o
+   áudio inteiro → parágrafo com pontuação) quando o motor Parakeet está
+   escolhido, com fallback automático para o Vosk; o ao vivo continua Vosk
+   (não existe modelo streaming em pt comprovadamente melhor). Download do
+   modelo (640 MB em <1 min) + parágrafo do Laboratório PROVADOS no aparelho
+   (textLen=295 num TTS de 27 s). ABI só arm64-v8a (o AAR traz .so de 4
+   ABIs: APK de 166 → ~48 MB). Release 1.0.3 (versionCode 4) em
+   entregas/android/telefone-chamador-1.0.3-vc4.apk; instalada no principal.
 Armadilhas já mordidas:
 - MIUI/HyperOS: popup de instalação a CADA adb install (avisar o usuário antes).
 - Depuração Wi-Fi não re-anuncia após reboot: religar na mão (off/on) e conectar
@@ -181,6 +212,20 @@ Armadilhas já mordidas:
   sem acento (os clones de teste com "%C3%A7" no nome foram apagados).
 - `adb shell am start` não abre activity não-exportada (SecurityException):
   navegar pela UI (ou deixar a activity exportada só em build de teste).
+- MODO AVIÃO ativo mata qualquer teste de ligação sem aviso: o botão "Refazer
+  ligação" parece morto (sem toast, sem log, sem activity nova). MIUI ignora o
+  broadcast AIRPLANE_MODE vindo de shell e `cmd airplane-mode` não existe nesta
+  versão; o uiautomator NÃO enxerga o shade da MIUI (só o tile manual resolve).
+  `settings global airplane_mode_on` pode dessincronizar do rádio (ficou 0 com
+  POWER_OFF) — restaurar o valor original ao terminar o teste.
+- uiautomator dump falha com "ERROR: could not get idle state" durante
+  animação de shade/dialogo: repetir o dump (2–4x com espera) em vez de
+  concluir que a tela não abriu.
+- PowerShell NÃO diferencia maiúsculas: $BUF e $buf são a MESMA variável —
+  numa contagem por amostra a constante de tamanho foi sobrescrita pelo array
+  (quebra com "op_Modulus"): usar nomes distintos ($BLEN).
+- AAR do sherpa-onnx embute .so de 4 ABIs (157 MB): sem ndk.abiFilters o APK
+  vai para 166 MB — filtrar para arm64-v8a (48 MB).
 
 COMO RETOMAR COM MÍNIMO ESFORÇO
 -------------------------------

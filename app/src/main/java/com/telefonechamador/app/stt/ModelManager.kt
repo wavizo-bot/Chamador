@@ -49,12 +49,30 @@ object ModelManager {
             "sherpa-onnx-nemo-parakeet-tdt-0.6b-v3-int8", "tbz",
             listOf("encoder.int8.onnx", "decoder.int8.onnx", "joiner.int8.onnx", "tokens.txt"),
         ),
+        SttModelDef(
+            "parakeet_ptbr", ENGINE_SHERPA,
+            "Parakeet pt-BR fine-tune TAGARELA — o mais preciso em português", 640,
+            "https://huggingface.co/joaorura/parakeet-tdt-0.6b-v3-ptBR-sherpa-onnx-int8/resolve/main/",
+            "parakeet-ptbr-int8", "files",
+            listOf("encoder.int8.onnx", "decoder.int8.onnx", "joiner.int8.onnx", "tokens.txt"),
+        ),
     )
 
     @Volatile
     var cancelRequested = false
 
     fun byId(id: String): SttModelDef? = MODELS.firstOrNull { it.id == id }
+
+    /**
+     * Melhor modelo sherpa INSTALADO neste aparelho: o preferido do usuário
+     * (Prefs.sherpaModel) se existir e estiver instalado; senão o primeiro da
+     * lista que esteja — assim quem baixou só o fine-tune pt-BR não cai no Vosk
+     * por causa do padrão "parakeet_v3" que não foi baixado.
+     */
+    fun installedSherpa(context: Context, preferredId: String? = null): SttModelDef? =
+        (preferredId?.let { byId(it) }
+            ?.takeIf { it.engine == ENGINE_SHERPA && isInstalled(context, it) })
+            ?: MODELS.firstOrNull { it.engine == ENGINE_SHERPA && isInstalled(context, it) }
 
     fun modelsDir(context: Context): File =
         File(context.filesDir, "stt-models").apply { mkdirs() }
@@ -85,6 +103,9 @@ object ModelManager {
         val dir = modelDir(context, def)
         if (isInstalled(context, def)) return@withContext true
         dir.mkdirs()
+        // Modelo "solto" (ex.: HuggingFace): arquivos baixados direto no dir,
+        // um a um, sem archive (ver downloadFiles).
+        if (def.format == "files") return@withContext downloadFiles(context, def, onProgress)
         // Arquivo parcial persiste entre tentativas e entre toques: retoma de onde parou.
         val tmpArchive = File(context.cacheDir, def.dirName + ".download")
         val tmpExtract = File(context.cacheDir, def.dirName + ".tmp").apply { mkdirs() }
@@ -170,6 +191,134 @@ object ModelManager {
         if (!result) onProgress(100, msgFinal)
         result
     }
+
+    /**
+     * Baixa os arquivos soltos de `def.requiredFiles` (def.url = prefixo) direto
+     * no dir do modelo, um a um, com retomada via Range. Cada arquivo entra como
+     * `<nome>.part` e só recebe o nome final quando completo — o satisfied() só
+     * olha os nomes finais, então um download a meio caminho nunca passa por
+     * "instalado".
+     */
+    private suspend fun downloadFiles(
+        context: Context,
+        def: SttModelDef,
+        onProgress: (Int, String) -> Unit,
+    ): Boolean = withContext(Dispatchers.IO) {
+        val dir = modelDir(context, def)
+        val files = def.requiredFiles
+        // Tamanhos via HEAD (melhor esforço) para o % global; 0 = desconhecido.
+        val sizes = LongArray(files.size)
+        var total = 0L
+        for (i in files.indices) {
+            if (cancelRequested) return@withContext false
+            val sz = try {
+                val c = URL(def.url + files[i]).openConnection() as HttpURLConnection
+                c.requestMethod = "HEAD"
+                c.connectTimeout = 15_000
+                c.connect()
+                val l = c.contentLengthLong
+                c.disconnect()
+                if (l > 0) l else 0L
+            } catch (_: Throwable) { 0L }
+            sizes[i] = sz
+            total += sz
+        }
+        var base = 0L   // bytes já concluídos (arquivos prontos)
+        var ok = true
+        for ((i, name) in files.withIndex()) {
+            if (cancelRequested) { ok = false; break }
+            val dest = File(dir, name)
+            // Retomada após crash/fechamento: o final só existe quando completo.
+            if (dest.exists() && dest.length() > 0 &&
+                (sizes[i] == 0L || dest.length() == sizes[i])
+            ) {
+                base += dest.length()
+                continue
+            }
+            val part = File(dir, "$name.part")
+            var done = false
+            var attempt = 0
+            while (!done && attempt < 4 && !cancelRequested) {
+                attempt++
+                try {
+                    val have = if (part.exists()) part.length() else 0L
+                    val conn = URL(def.url + name).openConnection() as HttpURLConnection
+                    conn.instanceFollowRedirects = true
+                    conn.connectTimeout = 30_000
+                    conn.readTimeout = 60_000
+                    if (have > 0) conn.setRequestProperty("Range", "bytes=$have-")
+                    conn.connect()
+                    val code = conn.responseCode
+                    if (code == 416 && have > 0) {
+                        // Tudo já baixado antes: o servidor recusa o Range vazio.
+                        conn.disconnect()
+                        part.renameTo(dest)
+                        done = true
+                        break
+                    }
+                    if (code != 200 && code != 206) {
+                        conn.disconnect()
+                        throw java.io.IOException("HTTP $code")
+                    }
+                    val appending = code == 206 && have > 0
+                    if (!appending && have > 0) part.delete()  // servidor ignorou o Range
+                    val from = if (appending) have else 0L
+                    // Total real: Content-Range (206) ou Content-Length (200).
+                    val fileTotal = if (appending) {
+                        contentRangeTotal(conn.getHeaderField("Content-Range"))
+                            .takeIf { it > 0 } ?: sizes[i]
+                    } else {
+                        conn.contentLengthLong.takeIf { it > 0 } ?: sizes[i]
+                    }
+                    conn.inputStream.use { input ->
+                        FileOutputStream(part, appending).use { out ->
+                            val buf = ByteArray(1 shl 16)
+                            var read = from
+                            while (true) {
+                                if (cancelRequested) break
+                                val n = input.read(buf)
+                                if (n < 0) break
+                                out.write(buf, 0, n)
+                                read += n
+                                val pct = if (total > 0) {
+                                    ((base + read) * 100 / total).toInt().coerceIn(0, 99)
+                                } else {
+                                    (i * 100 / files.size).coerceAtMost(99)
+                                }
+                                onProgress(pct, mbLabel(base + read, total) + " • arquivo ${i + 1}/${files.size}")
+                            }
+                        }
+                    }
+                    conn.disconnect()
+                    if (cancelRequested) { ok = false; break }
+                    val len = part.length()
+                    if (fileTotal > 0) {
+                        if (len >= fileTotal) { part.renameTo(dest); done = true }
+                        // senão a conexão caiu antes do fim: nova tentativa retoma via Range
+                    } else {
+                        // Sem tamanho conhecido: confia no fim normal do stream.
+                        part.renameTo(dest)
+                        done = true
+                    }
+                } catch (t: Throwable) {
+                    if (attempt >= 4) {
+                        onProgress(100, "falha: ${t.message ?: t.javaClass.simpleName}")
+                    } else delay(1_500)
+                }
+            }
+            if (!done) { ok = false; break }
+            base += dest.length()
+        }
+        if (ok) onProgress(100, "concluído")
+        else if (cancelRequested) onProgress(100, "cancelado")
+        ok
+    }
+
+    /** Header "bytes 0-99/1234" → 1234 (0 se não reconhecer). */
+    private fun contentRangeTotal(header: String?): Long = try {
+        val s = header?.substringAfterLast('/') ?: ""
+        if (s.isNotEmpty() && s.all { it.isDigit() }) s.toLong() else 0L
+    } catch (_: Throwable) { 0L }
 
     suspend fun delete(context: Context, def: SttModelDef) = withContext(Dispatchers.IO) {
         modelDir(context, def).deleteRecursively()

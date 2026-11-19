@@ -34,20 +34,7 @@ class SherpaEngine(private val modelDir: File, private val sampleRate: Int) : St
     private val lastText = HashMap<Int, String>()
 
     override suspend fun prepare(streamIds: List<Int>) {
-        val config = OfflineRecognizerConfig(
-            featConfig = FeatureConfig(sampleRate = sampleRate, featureDim = 80),
-            modelConfig = OfflineModelConfig(
-                transducer = OfflineTransducerModelConfig(
-                    encoder = File(modelDir, "encoder.int8.onnx").absolutePath,
-                    decoder = File(modelDir, "decoder.int8.onnx").absolutePath,
-                    joiner = File(modelDir, "joiner.int8.onnx").absolutePath,
-                ),
-                tokens = File(modelDir, "tokens.txt").absolutePath,
-                numThreads = 2,
-                debug = false,
-                provider = "cpu",
-            ),
-        )
+        val config = buildConfig(modelDir, sampleRate)
         recognizer = OfflineRecognizer(assetManager = null, config = config)
         streamIds.forEach { id -> acc[id] = ArrayList() }
     }
@@ -118,5 +105,50 @@ class SherpaEngine(private val modelDir: File, private val sampleRate: Int) : St
     companion object {
         private const val DECODE_EVERY_MS = 2000L
         private const val FINAL_DELTA_WORDS = 8
+
+        /** Config do transdutor Parakeet int8 (arquivos na raiz do dir do modelo). */
+        private fun buildConfig(modelDir: File, sampleRate: Int) = OfflineRecognizerConfig(
+            featConfig = FeatureConfig(sampleRate = sampleRate, featureDim = 80),
+            modelConfig = OfflineModelConfig(
+                transducer = OfflineTransducerModelConfig(
+                    encoder = File(modelDir, "encoder.int8.onnx").absolutePath,
+                    decoder = File(modelDir, "decoder.int8.onnx").absolutePath,
+                    joiner = File(modelDir, "joiner.int8.onnx").absolutePath,
+                ),
+                tokens = File(modelDir, "tokens.txt").absolutePath,
+                numThreads = 2,
+                debug = false,
+                provider = "cpu",
+            ),
+        )
+
+        /**
+         * Transcreve um PCM 16 kHz inteiro em UM passe → parágrafo único
+         * (pontuação/capitalização saem do próprio modelo). Chamado por reflexão
+         * de OfflineFileStt (source set main — o AAR não é visível lá fora).
+         * Retorna null em qualquer falha para o chamador cair no Vosk.
+         */
+        @JvmStatic
+        fun transcribeFile(modelDir: File, sampleRate: Int, pcm: ShortArray): String? {
+            if (pcm.isEmpty()) return null
+            return try {
+                val rec = OfflineRecognizer(assetManager = null, config = buildConfig(modelDir, sampleRate))
+                try {
+                    val stream = rec.createStream()
+                    val f = FloatArray(pcm.size)
+                    for (i in pcm.indices) f[i] = pcm[i] / 32768.0f
+                    stream.acceptWaveform(f, sampleRate)
+                    rec.decode(stream)
+                    val text = rec.getResult(stream).text.trim()
+                    try { stream.release() } catch (_: Throwable) { }
+                    text.ifBlank { null }
+                } finally {
+                    try { rec.release() } catch (_: Throwable) { }
+                }
+            } catch (t: Throwable) {
+                android.util.Log.d("TChamador", "sherpaFile: erro $t")
+                null
+            }
+        }
     }
 }

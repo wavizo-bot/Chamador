@@ -16,6 +16,7 @@ import com.telefonechamador.app.data.CallRepository
 import com.telefonechamador.app.util.Fmt
 import com.telefonechamador.app.service.OverlayService
 import com.telefonechamador.app.stt.ModelManager
+import com.telefonechamador.app.stt.OfflineFileStt
 import com.telefonechamador.app.stt.SttEngine
 import com.telefonechamador.app.stt.VoskEngine
 import com.telefonechamador.app.util.Notifications
@@ -524,13 +525,16 @@ class CallEngine(private val context: Context) {
         if (Prefs.sttEngine == Prefs.ENGINE_SHERPA) {
             try {
                 val cls = Class.forName("com.telefonechamador.app.stt.SherpaEngine")
-                val def = ModelManager.byId(Prefs.sherpaModel)
-                    ?: ModelManager.MODELS.first { it.engine == ModelManager.ENGINE_SHERPA }
-                val dir = ModelManager.modelDir(context, def)
-                if (ModelManager.isInstalled(context, def)) {
+                // Preferido do usuário se instalado; senão o primeiro sherpa
+                // instalado da lista (quem baixou só o fine-tune pt-BR não cai
+                // no Vosk por causa do padrão "parakeet_v3" não baixado).
+                val def = ModelManager.installedSherpa(context, Prefs.sherpaModel)
+                if (def != null) {
+                    val dir = ModelManager.modelDir(context, def)
                     val inst = cls.getConstructor(
                         File::class.java, Integer.TYPE,
                     ).newInstance(dir, rate)
+                    Log.d("TChamador", "buildStt: Parakeet em ${dir.absolutePath}")
                     return@withContext inst as SttEngine
                 }
             } catch (_: Throwable) { }
@@ -552,9 +556,14 @@ class CallEngine(private val context: Context) {
      * segmento começa onde o anterior terminou (o silêncio no meio vira lacuna).
      */
     private suspend fun transcribeMediaFile(path: String) = withContext(Dispatchers.Default) {
+        // Com Parakeet selecionado e instalado, o Vosk não é exigido aqui —
+        // se o Parakeet falhar, transcribePcm faz o próprio fallback e check.
+        val sherpaReady = Prefs.sttEngine == Prefs.ENGINE_SHERPA &&
+            OfflineFileStt.available() &&
+            ModelManager.installedSherpa(context, Prefs.sherpaModel) != null
         val def = ModelManager.byId(Prefs.voskModel)
             ?: ModelManager.MODELS.first { it.id == "vosk_small_pt" }
-        if (!ModelManager.isInstalled(context, def)) {
+        if (!sherpaReady && !ModelManager.isInstalled(context, def)) {
             note = (note ?: "") + " Gravação salva; transcrição adiada (modelo ausente)."
             return@withContext
         }
@@ -582,6 +591,31 @@ class CallEngine(private val context: Context) {
      * shell (PCM lido direto do arquivo).
      */
     private suspend fun transcribePcm(pcm: ShortArray) = withContext(Dispatchers.Default) {
+        var added = 0
+        // Parakeet/sherpa: UM passe sobre a gravação inteira → parágrafo único
+        // (é o que resolve "entende frase solta, mas não parágrafo inteiro").
+        if (Prefs.sttEngine == Prefs.ENGINE_SHERPA && OfflineFileStt.available()) {
+            val sdef = ModelManager.installedSherpa(context, Prefs.sherpaModel)
+            if (sdef != null) {
+                val text = OfflineFileStt.transcribe(
+                    ModelManager.modelDir(context, sdef), AudioSourceProbe.SAMPLE_RATE, pcm,
+                )
+                Log.d(
+                    "TChamador",
+                    "posTransc: engine=sherpa modelo=${sdef.id} textLen=${text?.length ?: -1}",
+                )
+                if (!text.isNullOrBlank()) {
+                    try {
+                        repo.addSegment(callId, Side.MIXED, 0L, text)
+                        added++
+                    } catch (_: Throwable) { }
+                    notifyTranscribed(added, sherpa = true)
+                    return@withContext
+                }
+            }
+            // Falhou (modelo corrompido, memória…): cai no Vosk abaixo.
+            Log.d("TChamador", "posTransc: sherpa ausente/falhou → fallback Vosk")
+        }
         val def = ModelManager.byId(Prefs.voskModel)
             ?: ModelManager.MODELS.first { it.id == "vosk_small_pt" }
         val dir = ModelManager.modelDir(context, def)
@@ -589,7 +623,6 @@ class CallEngine(private val context: Context) {
             note = (note ?: "") + " Gravação salva; transcrição adiada (modelo ausente)."
             return@withContext
         }
-        var added = 0
         try {
             val model = Model(dir.absolutePath)
             val recognizer = Recognizer(model, 16000f)
@@ -620,12 +653,18 @@ class CallEngine(private val context: Context) {
             try { model.close() } catch (_: Throwable) { }
         } catch (_: Throwable) { }
 
+        notifyTranscribed(added, sherpa = false)
+    }
+
+    /** Notificação única do fim da transcrição (Parakeet = parágrafo; Vosk = falas). */
+    private fun notifyTranscribed(added: Int, sherpa: Boolean) {
         if (added > 0) {
             val s = CallController.state.value
             Notifications.callEnded(
                 context,
                 s.contactName ?: s.number.ifBlank { "Ligação" },
-                "Transcrição concluída: $added fala(s) a partir da gravação",
+                if (sherpa) "Transcrição concluída: parágrafo único via Parakeet"
+                else "Transcrição concluída: $added fala(s) a partir da gravação",
             )
         }
     }

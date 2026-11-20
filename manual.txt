@@ -280,6 +280,24 @@ Armadilhas já mordidas:
   `rea decode-android-resources` (apktool). O apktool 2.12.0 NÃO aceita
   `--version` (o REA exige) → wrapper .bat que responde `2.12.0` e repassa o
   resto para o jar, com REA_APKTOOL_COMMAND apontando para o wrapper.
+- Ghidra instalado p/ o REA (19/11/2026): C:\APPS\Ghidra\ghidra_12.2_PUBLIC
+  (543 MB zip) + GHIDRA_INSTALL_DIR (variável de usuário) + JAVA_HOME = JBR do
+  Android Studio (C:\Program Files\Android\Android Studio\jbr — JDK 25
+  COMPLETO, tem javac; o REA recusa JDK 21). Para NÃO mexer no JAVA_HOME
+  global (outros projetos usam o JDK 21), usar o wrapper
+  C:\APPS\tools\rea-ghidra.cmd (seta JAVA_HOME, GHIDRA_INSTALL_DIR e PATH e
+  chama o rea). O `rea analyze` do REA no Windows só aceita PE (exe/dll) —
+  NÃO aceita APK (archive) nem ELF (as .so do app precisariam de Linux):
+  para Android, extrair o .so e analisar no Linux, ou usar o apktool. Alvo
+  PE usado: dexdump.exe (1,2 MB) — 2242 funções, 2539 strings, pseudocódigo
+  do main recuperado.
+- Binário PE grande demora e come MEMÓRIA: ffmpeg.exe full build (217 MB)
+  estourou até REA_GHIDRA_STARTUP_TIMEOUT_MS=1800000 (30 min) e a build
+  essentials (105 MB) estourou a HEAP do headless (default 2G →
+  "OutOfMemoryError: Java heap space") — subir GHIDRA_HEADLESS_MAXMEM=8G
+  (variável que o analyzeHeadless.bat lê; NÃO adicionar -Xmx no
+  launch.properties). Cada invocação reimporta do zero (sem cache), então
+  analisar 1x só e guardar a evidência.
 
 COMO RETOMAR COM MÍNIMO ESFORÇO
 -------------------------------

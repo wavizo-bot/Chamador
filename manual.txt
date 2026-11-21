@@ -245,7 +245,10 @@ TIMELINE E ARMADILHAS
   "Falar o texto" com "A ligação será gravada para fins de qualidade." →
   config nativo com data_dir=.../espeak-ng-data e lang="pt-br",
   kokoroTts: ok samples=67072 rate=24000, labTts: ok wav=134188B, e ▶
-  Original tocou os 3 s no alto-falante às 21h59 (player 24000 Hz). Release
+  Original tocou os 3 s no alto-falante às 21h59 (player 24000 Hz). SOTAQUE
+  APROVADO PELO DONO em 21/11/2026 ao ouvir ▶ Original no aparelho ("Ok, é
+  o meu idioma sim") — Etapa 2 encerrada; lang="pt" e atualização do AAR
+  (sherpa 2.x, lexicon de volta) ficam de reserva. Release
   1.0.5 (versionCode 6) em entregas/android/
   telefone-chamador-1.0.5-vc6.apk (42,4 MB); instalada no principal.
 Armadilhas já mordidas:

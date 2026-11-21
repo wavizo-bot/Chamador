@@ -214,6 +214,40 @@ TIMELINE E ARMADILHAS
    2.12.0 via REA_APKTOOL_COMMAND) — manifest, permissões e versão lidos.
    Release 1.0.4 (versionCode 5) em entregas/android/
    telefone-chamador-1.0.4-vc5.apk; instalada no principal.
+20/11/2026 (noite ~19h–22h): ETAPA 2 DA CLONAGEM — KOKORO INT8 PT-BR
+  (TTS neural de alta qualidade) DESTRUÍDO E CONCERTADO; entrega 1.0.5
+  (versionCode 6). Downloads no aparelho OK (lexicon 2 MB + Kokoro 126 MB em
+  <45 s), mas "🔊 Falar o texto" morria com "Invalid OfflineTtsConfig: failed
+  to create native OfflineTts". CAUSA (fontes sherpa-onnx v1.13.8 — a versão
+  EXATA do AAR, confirmada nas strings do libsherpa-onnx-jni.so):
+  OfflineTtsKokoroModelConfig.Validate() EXIGE kokoro-data-dir não-vazio com
+  phontab/phonindex/phondata/intonations do espeak-ng-data, e o nosso config
+  passava dataDir="" — o lexicon NÃO salva: com lang preenchido o impl SEMPRE
+  vai pelo espeak, e lang nunca vem vazio (o default é meta_data.voice, que é
+  "en-us"). FIX no SherpaTts.synthKokoro: dataDir = stt-models/espeak-ng-data
+  (irmão do tts-data, validado por phontab; sem ele o log manda baixar
+  "Fonemas pt-BR") + lang="pt-br" — "pt" é português de PORTUGAL (o próprio
+  espeak-ng-data/lang/roa/pt diz "Portuguese (Portugal)"; o Brasil está em
+  lang/roa/pt-BR com a linha "language pt-br"). Lexicon ficou sem uso no AAR
+  atual: def tts_kokoro_lex removida da ModelManager e o dataId do Kokoro
+  virou tts_espeak (sem espeak a voz nem é selecionada); créditos da tela
+  Sobre ajustados (fonemas espeak-ng GPL-3.0 também no Kokoro). ARMADEIRA NO
+  MEIO (R8): o primeiro build saiu, instalou (popup MIUI avisado) e a
+  TRANSCRIÇÃO quebrou — NoSuchMethodException: z1.e.transcribeFile [File,
+  int, [S]: o R8 renomeou SherpaEngine→z1.e e ADAPTOU a string do
+  Class.forName, mas não o nome do método no getMethod; no vc4/vc5 isso
+  funcionava SEM regra nenhuma (dex do 1.0.4 com nomes preservados — sorte da
+  otimização, não dá para depender). FIX: -keep class
+  com.telefonechamador.app.stt.SherpaEngine { *; } e SherpaTts { *; } em
+  proguard-rules.pro (afeta transcrição de arquivo, TTS do Laboratório e o
+  buildStt por reflexão da ligação). PROVADO no aparelho (goya) após o segundo
+  build: SAF "Abrir áudio" → "Transcrever" devolveu textLen=46 de novo;
+  "Falar o texto" com "A ligação será gravada para fins de qualidade." →
+  config nativo com data_dir=.../espeak-ng-data e lang="pt-br",
+  kokoroTts: ok samples=67072 rate=24000, labTts: ok wav=134188B, e ▶
+  Original tocou os 3 s no alto-falante às 21h59 (player 24000 Hz). Release
+  1.0.5 (versionCode 6) em entregas/android/
+  telefone-chamador-1.0.5-vc6.apk (42,4 MB); instalada no principal.
 Armadilhas já mordidas:
 - MIUI/HyperOS: popup de instalação a CADA adb install (avisar o usuário antes).
 - Depuração Wi-Fi não re-anuncia após reboot: religar na mão (off/on) e conectar
@@ -225,6 +259,10 @@ Armadilhas já mordidas:
   via bind assíncrono — fix da build 29.
 - Gravação por run-as não alcança /sdcard; binários puxar com
   `adb exec-out run-as cat ... > arquivo` (cmd /c) e empurrar via /data/local/tmp.
+  ATENÇÃO: run-as só funciona em build DEBUGGABLE (debug) — no RELEASE o
+  aparelho responde "package not debuggable", então os WAVs de files/lab não
+  saem por aí: ouvir no próprio aparelho (▶ Original) ou exportar pelo app
+  para /sdcard/Android/data/com.telefonechamador.app/files/exportado (adb pull).
 - Select-String com padrão acentuado falha; usar fragmentos ASCII.
 - Ícones vetoriais brancos: pathData sem namespace android: (já corrigido).
 - Ajustes desconectados do motor: resolvido com PrefsDataStore.
@@ -242,9 +280,12 @@ Armadilhas já mordidas:
 - Diálogo com campo de texto (ex.: nome da voz no Laboratório): tocar no
   EditText ABRE o TECLADO e o Android DESLOCA o diálogo para cima — refazer o
   dump e tocar "Salvar" na posição nova; tap na posição antiga cai no teclado.
-- `adb shell input text` NÃO decodifica acentos (%C3%A7 vira texto literal):
-  para digitar com acento pelo adb, usar `am broadcast`/AdbKeyboard ou nome
-  sem acento (os clones de teste com "%C3%A7" no nome foram apagados).
+- `adb shell input text` NÃO decodifica acentos (%C3%A7 vira texto literal) e
+  no HyperOS falha com NPE "null array" em texto UTF-8 (ASCII com %s funciona):
+  o ADBKeyboard NÃO instala neste aparelho (2 tentativas canceladas com
+  INSTALL_FAILED_USER_RESTRICTED), então o caminho provado para digitar texto
+  acentuado no Laboratório é SAF "Abrir áudio" + "Transcrever" (o Parakeet
+  preenche o campo de fala via setText com UTF-8 correto).
 - `adb shell am start` não abre activity não-exportada (SecurityException):
   navegar pela UI (ou deixar a activity exportada só em build de teste).
 - MODO AVIÃO ativo mata qualquer teste de ligação sem aviso: o botão "Refazer
@@ -298,6 +339,28 @@ Armadilhas já mordidas:
   (variável que o analyzeHeadless.bat lê; NÃO adicionar -Xmx no
   launch.properties). Cada invocação reimporta do zero (sem cache), então
   analisar 1x só e guardar a evidência.
+- sherpa-onnx 1.13.8 (a versão do AAR em app/libs) com Kokoro: a validação
+  EXIGE kokoro-data-dir apontando para o espeak-ng-data com phontab/phonindex/
+  phondata/intonations (dataDir="" derruba o construtor nativo inteiro com
+  "Invalid OfflineTtsConfig"), e o caminho do lexicon é INALCANÇÁVEL porque
+  lang nunca vem vazio (default = meta_data.voice do modelo = "en-us") — com
+  lang o fonemizador é sempre o espeak. Nome da voz do espeak: "pt" = Portugal,
+  "pt-br" = Brasil (conferir em espeak-ng-data/lang/roa/*: a linha "language …"
+  é o nome aceito). E AAR ≠ sherpa do PC: o pip tem 2.0.2 (ignora data_dir e
+  não usa espeak no kokoro) — validar config sempre contra a tag do AAR.
+- R8 + reflexão ENTRE source sets: manter as regras -keep de SherpaEngine
+  (Class.forName + getMethod "transcribeFile" + getConstructor (File,int) do
+  buildStt) e SherpaTts (getMethod "synthesize") em proguard-rules.pro. Sem a
+  regra o R8 renomeia a classe (z1.e/z1.f) e ADAPTA a string do Class.forName,
+  mas NÃO a do método no getMethod → NoSuchMethodException: z1.e.transcribeFile
+  (aconteceu na 1.0.5; na 1.0.4 funcionava sem regra — sorte da otimização,
+  não dá para depender disso).
+- Build RELEASE não é debuggable: `run-as` falha ("package not debuggable"),
+  então nada de puxar files/lab com exec-out — ver item do run-as acima.
+- Tela dormiu no MEIO do teste (screen_off_timeout de 15 s na MIUI): subir com
+  `adb shell settings put system screen_off_timeout 600000` antes de um
+  teste longo e rebaixar depois; a gravar sem repetir, o dump do uiautomator
+  falha com "could not get idle state" quando a tela apaga.
 
 COMO RETOMAR COM MÍNIMO ESFORÇO
 -------------------------------

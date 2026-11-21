@@ -24,6 +24,7 @@ data class SttModelDef(
     val format: String,          // "zip" | "tbz" | "files"
     val requiredFiles: List<String>,
     val kind: String = "asr",    // "asr" = transcrição | "tts" = voz p/ falar | "tts-data" = apoio do TTS
+    val dataId: String? = null,  // se kind="tts": id do tts-data que esta voz exige
 )
 
 object ModelManager {
@@ -61,9 +62,23 @@ object ModelManager {
         // (sem microfone, sem chiado de captação) — ver SherpaTts/OfflineFileTts.
         SttModelDef(
             "tts_espeak", ENGINE_SHERPA,
-            "Fonemas pt-BR (espeak-ng) — apoio das vozes Piper", 7,
+            "Fonemas pt-BR (espeak-ng) — apoio das vozes Piper e Kokoro", 7,
             "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/espeak-ng-data.tar.bz2",
             "espeak-ng-data", "tbz", listOf("phontab"), "tts-data",
+        ),
+        // A voz Kokoro vem ANTES da Piper na lista: installedTts prefere a
+        // primeira voz instalada, então quem tem o Kokoro (Etapa 2 da
+        // clonagem) fala com ele sem mexer em nada.
+        SttModelDef(
+            "tts_kokoro", ENGINE_SHERPA,
+            "Voz Kokoro pt-BR int8 (dora) — TTS neural de alta qualidade", 126,
+            "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/kokoro-int8-multi-lang-v1_0.tar.bz2",
+            "kokoro-int8-multi-lang-v1_0", "tbz",
+            listOf("model.int8.onnx", "voices.bin", "tokens.txt"), "tts",
+            // O sherpa 1.13.8 (AAR) fonemiza o Kokoro com espeak-ng e EXIGE
+            // o espeak-ng-data em kokoro-data-dir — sem ele o OfflineTts
+            // nativo nem nasce (o lexicon pt-BR ficou sem uso nessa versão).
+            dataId = "tts_espeak",
         ),
         SttModelDef(
             "tts_piper_jeff", ENGINE_SHERPA,
@@ -71,6 +86,7 @@ object ModelManager {
             "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-pt_BR-jeff-medium-int8.tar.bz2",
             "vits-piper-pt_BR-jeff-medium-int8", "tbz",
             listOf("pt_BR-jeff-medium.onnx", "pt_BR-jeff-medium.onnx.json", "tokens.txt"), "tts",
+            dataId = "tts_espeak",
         ),
     )
 
@@ -93,13 +109,22 @@ object ModelManager {
             }
 
     /**
-     * Voz TTS instalada (Piper) + diretório do espeak-ng-data, que o Piper
-     * precisa para fonemizar o pt-BR. Null se faltar qualquer um dos dois.
+     * Voz TTS instalada + diretório do tts-data que ELA exige: Kokoro e Piper
+     * pedem o espeak-ng-data (o sherpa 1.13.8 fonemiza os dois com espeak).
+     * Percorre as vozes na ordem da lista (Kokoro antes de Piper): se faltar
+     * o apoio de uma voz, tenta a seguinte; null se nenhuma estiver completa.
      */
     fun installedTts(context: Context): Pair<SttModelDef, File>? {
-        val voice = MODELS.firstOrNull { it.kind == "tts" && isInstalled(context, it) } ?: return null
-        val espeak = MODELS.firstOrNull { it.kind == "tts-data" && isInstalled(context, it) } ?: return null
-        return voice to modelDir(context, espeak)
+        for (voice in MODELS.filter { it.kind == "tts" }) {
+            if (!isInstalled(context, voice)) continue
+            val data = if (voice.dataId != null) {
+                byId(voice.dataId)?.takeIf { isInstalled(context, it) }
+            } else {
+                MODELS.firstOrNull { it.kind == "tts-data" && isInstalled(context, it) }
+            }
+            if (data != null) return voice to modelDir(context, data)
+        }
+        return null
     }
 
     fun modelsDir(context: Context): File =

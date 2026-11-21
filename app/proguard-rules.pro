@@ -19,3 +19,12 @@
 # servidor Shizuku — sem keep o R8 remove/renomeia e a gravação via shell quebra.
 -keep class com.telefonechamador.app.shizuku.** { *; }
 -keep class org.lsposed.hiddenapibypass.** { *; }
+
+# Reflexão ENTRE source sets: OfflineFileStt/OfflineFileTts/CallEngine chamam
+# SherpaEngine e SherpaTts pelo NOME (Class.forName + getMethod/getConstructor),
+# mas eles moram no source set condicional sherpa. Sem keep o R8 renomeia a
+# classe (ex.: z1.e) e ADAPTA a string do Class.forName, enquanto o nome do
+# método no getMethod fica literal → NoSuchMethodException: z1.e.transcribeFile
+# (quebra transcrição de arquivo, TTS do Laboratório e STT em ligação).
+-keep class com.telefonechamador.app.stt.SherpaEngine { *; }
+-keep class com.telefonechamador.app.stt.SherpaTts { *; }

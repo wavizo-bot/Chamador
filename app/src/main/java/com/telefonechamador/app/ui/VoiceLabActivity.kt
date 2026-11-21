@@ -610,7 +610,7 @@ class VoiceLabActivity : AppCompatActivity() {
         val tts = ModelManager.installedTts(this) ?: run {
             Toast.makeText(
                 this,
-                "Baixe a voz Piper em Configurar → Modelos (voz Piper + fonemas pt-BR).",
+                "Baixe uma voz em Configurar → Modelos: Kokoro pt-BR (recomendado: voz + fonemas espeak) ou Piper (voz + fonemas espeak).",
                 Toast.LENGTH_LONG,
             ).show()
             return
@@ -658,7 +658,7 @@ class VoiceLabActivity : AppCompatActivity() {
                 "TChamador",
                 "labTts: ok chars=${text.length} samples=${samples.size} rate=$rate wav=${wav.length()}B",
             )
-            setSource(wav, "Fala gerada (voz Piper)")
+            setSource(wav, "Fala gerada (voz ${if (tts.first.id == "tts_kokoro") "Kokoro pt-BR" else "Piper"})")
             Toast.makeText(
                 this@VoiceLabActivity,
                 "Fala pronta ✔ — toque em ▶ Original ou escolha um efeito.",

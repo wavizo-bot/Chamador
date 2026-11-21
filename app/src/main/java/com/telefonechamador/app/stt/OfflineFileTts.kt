@@ -18,8 +18,10 @@ object OfflineFileTts {
     /**
      * Sintetiza [text] e devolve mapa "samples" (FloatArray) + "sampleRate" (Int),
      * ou null quando não há lib, não há modelo, ou em qualquer falha.
+     * [dataDir] é o tts-data da voz instalada (espeak-ng-data, exigido pelo
+     * Kokoro e pelo Piper no sherpa 1.13.8).
      */
-    fun synthesize(modelDir: File, espeakDir: File, text: String): HashMap<String, Any>? {
+    fun synthesize(modelDir: File, dataDir: File, text: String): HashMap<String, Any>? {
         if (!available()) return null
         return try {
             val cls = Class.forName("com.telefonechamador.app.stt.SherpaTts")
@@ -29,7 +31,7 @@ object OfflineFileTts {
                 File::class.java,
                 File::class.java,
                 String::class.java,
-            ).invoke(null, modelDir, espeakDir, text) as? HashMap<String, Any>
+            ).invoke(null, modelDir, dataDir, text) as? HashMap<String, Any>
         } catch (err: Throwable) {
             Log.d(TAG, "offlineTts: $err")
             null

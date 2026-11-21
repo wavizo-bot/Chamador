@@ -270,11 +270,18 @@ class SettingsFragment : PreferenceFragmentCompat() {
 
     private fun showAbout() {
         AlertDialog.Builder(requireContext())
-            .setTitle("Telefone Chamador")
+            .setTitle("Telefone Chamador — Sobre")
             .setMessage(
-                "1.0.0\n\nTranscrição offline (Vosk / Parakeet), gravação com fallback, " +
-                    "VAD anti-silêncio, efeitos de voz e janela flutuante. " +
-                    "Modo discador completo quando definido como telefone padrão."
+                "Versão ${versaoInstalada()}\n" +
+                    "Uso pessoal, dados 100% locais.\n\n" +
+                    "Vozes do Laboratório (TTS):\n" +
+                    "• Kokoro pt-BR — vozes pf_dora, pm_alex e pm_santa do " +
+                    "Kokoro-82M (hexgrad/Kokoro-82M, Apache-2.0), executado com " +
+                    "sherpa-onnx (Apache-2.0) e fonemas espeak-ng (GPL-3.0).\n" +
+                    "• Piper pt-BR (Jeff) — projeto Piper (rhasspy/piper, MIT) " +
+                    "com fonemas espeak-ng (GPL-3.0).\n\n" +
+                    "Transcrição: Vosk (Apache-2.0) e Parakeet NVIDIA " +
+                    "(CC-BY-4.0) via sherpa-onnx."
             )
             .setPositiveButton("OK", null)
             .show()

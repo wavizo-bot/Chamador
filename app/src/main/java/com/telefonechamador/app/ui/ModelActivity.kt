@@ -131,6 +131,7 @@ class ModelAdapter(private val onAction: (SttModelDef, Int) -> Unit) :
             append(if (installed) "Instalado" else "${def.sizeMb} MB para baixar")
             append(" • ")
             append(when {
+                def.kind == "tts-data" -> "apoio do TTS"
                 def.kind != "asr" -> "voz do Laboratório"
                 def.engine == ModelManager.ENGINE_SHERPA -> "motor Parakeet"
                 else -> "motor Vosk"
